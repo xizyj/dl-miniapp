@@ -1,0 +1,23 @@
+<view class="page-shell">
+  <view class="hero card">
+    <text class="eyebrow">MINI APP</text>
+    <text class="title">{{title}}</text>
+    <text class="subtitle">{{subtitle}}</text>
+  </view>
+
+  <view class="panel card">
+    <text class="panel-title">当前工程包含</text>
+    <view wx:for="{{highlights}}" wx:key="label" class="row">
+      <text class="label">{{item.label}}</text>
+      <text class="value">{{item.value}}</text>
+    </view>
+  </view>
+
+  <view class="panel card">
+    <text class="panel-title">下一步建议</text>
+    <view wx:for="{{checklist}}" wx:key="text" class="check-item">
+      <text class="dot"></text>
+      <text class="check-text">{{item.text}}</text>
+    </view>
+  </view>
+</view>

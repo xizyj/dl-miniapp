@@ -1,0 +1,10 @@
+{
+  "name": "mini-app",
+  "private": true,
+  "version": "0.1.0",
+  "description": "微信小程序初始化工程",
+  "scripts": {
+    "check": "node scripts/validate-project.mjs",
+    "start": "echo '请使用微信开发者工具打开当前目录进行调试'"
+  }
+}

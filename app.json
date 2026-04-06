@@ -1,0 +1,14 @@
+{
+  "pages": [
+    "pages/index/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "Mini App Starter",
+    "navigationBarBackgroundColor": "#f5efe6",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f7f3ed",
+    "backgroundTextStyle": "light"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}
