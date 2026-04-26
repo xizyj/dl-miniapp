@@ -1,0 +1,73 @@
+<view class="page-shell">
+  <view class="form-card card">
+    <text class="card-title">基础配置</text>
+    <view class="form-row form-row-block">
+      <text class="form-label">设备ID</text>
+      <view class="field-shell field-shell-disabled">
+        <input class="form-input form-input-disabled" value="{{deviceId}}" disabled />
+      </view>
+    </view>
+
+    <view class="form-row form-row-block">
+      <text class="form-label">功能类型</text>
+      <view class="field-shell">
+        <input class="form-input" value="{{func}}" data-field="func" bindinput="handleInput" placeholder="请输入功能类型" />
+        <text wx:if="{{func}}" class="clear-button" data-field="func" bindtap="clearField">清空</text>
+      </view>
+    </view>
+
+    <view class="form-row form-row-block">
+      <text class="form-label">历史轮数</text>
+      <view class="field-shell">
+        <input class="form-input" value="{{historyCnt}}" data-field="historyCnt" bindinput="handleInput" type="number" placeholder="请输入历史轮数" />
+        <text wx:if="{{historyCnt}}" class="clear-button" data-field="historyCnt" bindtap="clearField">清空</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="form-card card form-card-secondary">
+    <text class="card-title">模型配置</text>
+
+    <view class="form-row form-row-block">
+      <text class="form-label">模型名称</text>
+      <view class="field-shell">
+        <input class="form-input" value="{{modelName}}" data-field="modelName" bindinput="handleInput" placeholder="请输入模型名称" />
+        <text wx:if="{{modelName}}" class="clear-button" data-field="modelName" bindtap="clearField">清空</text>
+      </view>
+    </view>
+
+    <view class="form-row form-row-block">
+      <text class="form-label">模型标识</text>
+      <view class="field-shell">
+        <input class="form-input" value="{{model}}" data-field="model" bindinput="handleInput" placeholder="请输入模型标识" />
+        <text wx:if="{{model}}" class="clear-button" data-field="model" bindtap="clearField">清空</text>
+      </view>
+    </view>
+
+    <view class="form-row form-row-block">
+      <text class="form-label">模型前缀</text>
+      <view class="textarea-shell">
+        <textarea class="form-textarea" value="{{modelPrefix}}" data-field="modelPrefix" bindinput="handleInput" placeholder="请输入模型前缀" />
+        <text wx:if="{{modelPrefix}}" class="clear-button clear-button-textarea" data-field="modelPrefix" bindtap="clearField">清空</text>
+      </view>
+    </view>
+
+    <view class="form-row form-row-block">
+      <text class="form-label">最大Token数</text>
+      <view class="field-shell">
+        <input class="form-input" value="{{maxTokens}}" data-field="maxTokens" bindinput="handleInput" type="digit" placeholder="请输入最大Token数" />
+        <text wx:if="{{maxTokens}}" class="clear-button" data-field="maxTokens" bindtap="clearField">清空</text>
+      </view>
+    </view>
+
+    <view class="form-row form-row-block">
+      <text class="form-label">温度</text>
+      <view class="field-shell">
+        <input class="form-input" value="{{temperature}}" data-field="temperature" bindinput="handleInput" type="digit" placeholder="请输入温度" />
+        <text wx:if="{{temperature}}" class="clear-button" data-field="temperature" bindtap="clearField">清空</text>
+      </view>
+    </view>
+
+    <button class="submit-button" loading="{{submitting}}" bindtap="submitForm">创建智能体</button>
+  </view>
+</view>

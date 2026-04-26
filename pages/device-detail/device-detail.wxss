@@ -1,0 +1,146 @@
+.page-shell {
+  padding: 24rpx;
+  background: #f8f8f8;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.card {
+  background: #ffffff;
+  border-radius: 24rpx;
+  padding: 32rpx;
+  box-shadow: 0 12rpx 32rpx rgba(16, 42, 67, 0.08);
+}
+
+.state-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 240rpx;
+}
+
+.state-text {
+  font-size: 30rpx;
+  color: #52606d;
+}
+
+.detail-card {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.action-card {
+  margin-top: 24rpx;
+}
+
+.action-card-title {
+  display: block;
+  margin-bottom: 28rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #102a43;
+}
+
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24rpx;
+}
+
+.action-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18rpx;
+  min-height: 184rpx;
+  padding: 24rpx;
+  border-radius: 20rpx;
+  background: linear-gradient(180deg, #fbfdff 0%, #eef4fa 100%);
+  box-shadow: inset 0 0 0 2rpx rgba(16, 42, 67, 0.04);
+}
+
+.action-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 28rpx;
+  box-shadow: 0 12rpx 28rpx rgba(16, 42, 67, 0.16);
+}
+
+.action-icon {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.action-label {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #243b53;
+}
+
+.icon-agent {
+  background: linear-gradient(135deg, #1d4ed8 0%, #06b6d4 100%);
+}
+
+.icon-history {
+  background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%);
+}
+
+.icon-market {
+  background: linear-gradient(135deg, #f97316 0%, #facc15 100%);
+}
+
+.icon-help {
+  background: linear-gradient(135deg, #0f766e 0%, #34d399 100%);
+}
+
+.icon-reset {
+  background: linear-gradient(135deg, #ef4444 0%, #fb7185 100%);
+}
+
+.icon-unbind {
+  background: linear-gradient(135deg, #475569 0%, #0f172a 100%);
+}
+
+.detail-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24rpx;
+  padding-bottom: 24rpx;
+  border-bottom: 2rpx solid rgba(16, 42, 67, 0.08);
+}
+
+.detail-row:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.detail-row-block {
+  flex-direction: column;
+}
+
+.detail-label {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #486581;
+}
+
+.detail-value {
+  flex: 1;
+  font-size: 28rpx;
+  color: #102a43;
+  text-align: right;
+}
+
+.detail-pre {
+  width: 100%;
+  text-align: left;
+  white-space: pre-wrap;
+  word-break: break-all;
+}

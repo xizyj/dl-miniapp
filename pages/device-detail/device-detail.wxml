@@ -1,0 +1,53 @@
+<view class="page-shell">
+  <view wx:if="{{loading}}" class="state-card card">
+    <text class="state-text">加载中...</text>
+  </view>
+
+  <view wx:elif="{{errorMessage}}" class="state-card card">
+    <text class="state-text">{{errorMessage}}</text>
+  </view>
+
+  <view wx:else>
+    <view class="detail-card card">
+      <view class="detail-row">
+        <text class="detail-label">模型名称</text>
+        <text class="detail-value">{{modelName}}</text>
+      </view>
+      <view class="detail-row">
+        <text class="detail-label">模型</text>
+        <text class="detail-value">{{model}}</text>
+      </view>
+      <view class="detail-row detail-row-block">
+        <text class="detail-label">模型前缀</text>
+        <text class="detail-value detail-pre">{{modelPrefix}}</text>
+      </view>
+      <view class="detail-row">
+        <text class="detail-label">设备ID</text>
+        <text class="detail-value">{{deviceId}}</text>
+      </view>
+      <view class="detail-row">
+        <text class="detail-label">版本</text>
+        <text class="detail-value">{{version}}</text>
+      </view>
+    </view>
+
+    <view class="action-card card">
+      <text class="action-card-title">快捷功能</text>
+      <view class="action-grid">
+        <view
+          wx:for="{{quickActions}}"
+          wx:key="key"
+          class="action-button"
+          data-key="{{item.key}}"
+          data-label="{{item.label}}"
+          bindtap="handleQuickActionTap"
+        >
+          <view class="action-icon-wrap {{item.iconClass}}">
+            <text class="action-icon">{{item.iconText}}</text>
+          </view>
+          <text class="action-label">{{item.label}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

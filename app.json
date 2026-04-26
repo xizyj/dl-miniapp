@@ -1,14 +1,18 @@
 {
   "pages": [
-    "pages/index/index"
+    "pages/index/index",
+    "pages/search/search",
+    "pages/device/device",
+    "pages/device-detail/device-detail",
+    "pages/model-market/model-market",
+    "pages/create-agent/create-agent"
   ],
   "window": {
-    "navigationBarTitleText": "Mini App Starter",
-    "navigationBarBackgroundColor": "#f5efe6",
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#f8f8f8",
+    "navigationBarTitleText": "xBlufi蓝牙配网",
     "navigationBarTextStyle": "black",
-    "backgroundColor": "#f7f3ed",
-    "backgroundTextStyle": "light"
+    "backgroundColor": "#f8f8f8"
   },
-  "style": "v2",
   "sitemapLocation": "sitemap.json"
 }

@@ -1,42 +1,42 @@
 {
-  "appid": "touristappid",
-  "projectname": "mini-app",
-  "compileType": "miniprogram",
-  "miniprogramRoot": "./",
-  "srcMiniprogramRoot": "./",
-  "setting": {
-    "babelSetting": {
-      "ignore": [],
-      "disablePlugins": [],
-      "outputPath": ""
+    "appid": "wxc1728e6e1681500a",
+    "projectname": "mini-app",
+    "compileType": "miniprogram",
+    "miniprogramRoot": "./",
+    "srcMiniprogramRoot": "./",
+    "setting": {
+        "babelSetting": {
+            "ignore": [],
+            "disablePlugins": [],
+            "outputPath": ""
+        },
+        "coverView": true,
+        "es6": true,
+        "enhance": true,
+        "ignoreUploadUnusedFiles": true,
+        "minified": true,
+        "postcss": true,
+        "urlCheck": false,
+        "compileWorklet": false,
+        "uglifyFileName": false,
+        "uploadWithSourceMap": true,
+        "packNpmManually": false,
+        "packNpmRelationList": [],
+        "minifyWXSS": true,
+        "minifyWXML": true,
+        "localPlugins": false,
+        "disableUseStrict": false,
+        "useCompilerPlugins": false,
+        "condition": false,
+        "swc": false,
+        "disableSWC": true
     },
-    "coverView": true,
-    "es6": true,
-    "enhance": true,
-    "ignoreUploadUnusedFiles": true,
-    "minified": true,
-    "postcss": true,
-    "urlCheck": false,
-    "compileWorklet": false,
-    "uglifyFileName": false,
-    "uploadWithSourceMap": true,
-    "packNpmManually": false,
-    "packNpmRelationList": [],
-    "minifyWXSS": true,
-    "minifyWXML": true,
-    "localPlugins": false,
-    "disableUseStrict": false,
-    "useCompilerPlugins": false,
-    "condition": false,
-    "swc": false,
-    "disableSWC": true
-  },
-  "simulatorType": "wechat",
-  "condition": {},
-  "simulatorPluginLibVersion": {},
-  "packOptions": {
-    "ignore": [],
-    "include": []
-  },
-  "editorSetting": {}
+    "simulatorType": "wechat",
+    "condition": {},
+    "simulatorPluginLibVersion": {},
+    "packOptions": {
+        "ignore": [],
+        "include": []
+    },
+    "editorSetting": {}
 }
