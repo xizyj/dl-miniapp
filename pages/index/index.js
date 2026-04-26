@@ -1,48 +1,17 @@
 const { addDeviceActions, devices } = require('../../utils/device-home-data')
-const { getStoredToken, request, setStoredToken } = require('../../utils/http')
+const { ensureAuthToken, request } = require('../../utils/http')
 
-const LOGIN_URL = 'http://penholderoneos.llm.aiha.cloud:8099/auth/device'
 const BIND_DEVICE_URL = 'http://penholderoneos.llm.aiha.cloud:8099/appuser/bindDevice'
-const DEVICE_ID = 'MYF-00011C00D5AD'
 
 function showToast(title, icon = 'none') {
   wx.showToast({ title, icon })
-}
-
-// Accept token fields from both body payloads and auth headers.
-function extractToken(response) {
-  const responseData = response && response.data ? response.data : {}
-  const nestedData = responseData && responseData.data ? responseData.data : {}
-  const authorization = response && response.header ? response.header.Authorization || response.header.authorization : ''
-
-  if (responseData.token) {
-    return responseData.token
-  }
-
-  if (responseData.accessToken) {
-    return responseData.accessToken
-  }
-
-  if (nestedData.token) {
-    return nestedData.token
-  }
-
-  if (nestedData.accessToken) {
-    return nestedData.accessToken
-  }
-
-  if (typeof authorization === 'string' && authorization) {
-    return authorization.replace(/^Bearer\s+/i, '')
-  }
-
-  return ''
 }
 
 Page({
   data: {
     title: '我的设备',
     devices,
-    isLoggedIn: false,
+    isLoggedIn: true,
     loggingIn: false,
     bindModalVisible: false,
     bindDeviceId: '',
@@ -53,11 +22,18 @@ Page({
 
   onLoad() {
     this.restoreLoginState()
+    this.ensureTokenSilently()
   },
 
   restoreLoginState() {
     this.setData({
-      isLoggedIn: !!getStoredToken()
+      isLoggedIn: true
+    })
+  },
+
+  ensureTokenSilently() {
+    ensureAuthToken().catch((error) => {
+      console.error('auto auth failed on index:', error)
     })
   },
 
@@ -87,39 +63,20 @@ Page({
       loggingIn: true
     })
 
-    request({
-      url: LOGIN_URL,
-      method: 'POST',
-      header: {
-        'Content-Type': 'application/json'
-      },
-      data: {
-        deviceId: DEVICE_ID
-      },
-      success: (response) => {
-        const token = extractToken(response)
-
-        console.log('miniapp enter response:', response)
-
-        if (!token) {
-          this.setData({ loggingIn: false })
-          showToast('未获取到token')
-          return
-        }
-
-        setStoredToken(token)
+    ensureAuthToken({ forceRefresh: true }).then(
+      () => {
         this.setData({
           isLoggedIn: true,
           loggingIn: false,
           drawerVisible: false
         })
       },
-      fail: (error) => {
+      (error) => {
         console.error('miniapp enter failed:', error)
         this.setData({ loggingIn: false })
         showToast('登录失败')
       }
-    })
+    )
   },
 
   openAddDrawer() {
@@ -157,13 +114,7 @@ Page({
   },
 
   confirmBindDevice() {
-    const token = getStoredToken()
     const deviceId = (this.data.bindDeviceId || '').trim()
-
-    if (!token) {
-      showToast('缺少登录token')
-      return
-    }
 
     if (!deviceId) {
       showToast('请输入设备ID')
@@ -182,7 +133,7 @@ Page({
     request({
       url: BIND_DEVICE_URL,
       method: 'POST',
-      token,
+      withAuth: true,
       header: {
         'Content-Type': 'application/json'
       },

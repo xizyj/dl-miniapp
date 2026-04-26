@@ -1,4 +1,4 @@
-const { getStoredToken, request } = require('../../utils/http')
+const { request } = require('../../utils/http')
 
 const MODEL_MARKET_URL = 'http://penholderoneos.llm.aiha.cloud:8099/gptmodel/list'
 const BIND_MODEL_BASE_URL = 'http://penholderoneos.llm.aiha.cloud:8099/gptmodel/bindDevice'
@@ -40,8 +40,6 @@ Page({
   },
 
   fetchModels({ query, pageNum, append }) {
-    const token = getStoredToken()
-
     this.setData({
       loading: append ? this.data.loading : true,
       loadingMore: append,
@@ -51,7 +49,7 @@ Page({
     request({
       url: `${MODEL_MARKET_URL}?pageNum=${pageNum}&pageSize=${PAGE_SIZE}&query=${encodeURIComponent(query)}`,
       method: 'GET',
-      token,
+      withAuth: true,
       success: (response, responseData) => {
         console.log('model market response:', response)
 
@@ -86,7 +84,7 @@ Page({
         this.setData({
           loading: false,
           loadingMore: false,
-          errorMessage: '获取模型列表失败'
+          errorMessage: error && error.message ? error.message : '获取模型列表失败'
         })
       }
     })
@@ -123,17 +121,8 @@ Page({
   },
 
   bindModel(event) {
-    const token = getStoredToken()
     const { modelId } = event.currentTarget.dataset
     const { deviceId, bindingModelId } = this.data
-
-    if (!token) {
-      wx.showToast({
-        title: '缺少登录token',
-        icon: 'none'
-      })
-      return
-    }
 
     if (!deviceId) {
       wx.showToast({
@@ -154,7 +143,7 @@ Page({
     request({
       url: `${BIND_MODEL_BASE_URL}/${encodeURIComponent(modelId)}/${encodeURIComponent(deviceId)}`,
       method: 'POST',
-      token,
+      withAuth: true,
       success: (response, responseData) => {
         console.log('bind model response:', response)
 
@@ -183,7 +172,7 @@ Page({
         })
 
         wx.showToast({
-          title: '绑定失败',
+          title: error && error.message ? error.message : '绑定失败',
           icon: 'none'
         })
       }

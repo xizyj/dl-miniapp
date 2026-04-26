@@ -1,4 +1,7 @@
 const xBlufi = require('../../utils/blufi/xBlufi.js')
+const { request } = require('../../utils/http')
+
+const BIND_DEVICE_URL = 'http://penholderoneos.llm.aiha.cloud:8099/appuser/bindDevice'
 
 function showModal(options) {
   wx.showModal({
@@ -18,7 +21,8 @@ Page({
     connected: true,
     isInitOK: false,
     password: '',
-    customData: ''
+    customData: '',
+    bindingDevice: false
   },
 
   onLoad(options) {
@@ -100,6 +104,8 @@ Page({
                   customData: this.data.customData
                 })
               }
+
+              this.bindProvisionedDevice()
             }
           })
         }
@@ -192,6 +198,76 @@ Page({
   bindCustomDataInput(event) {
     this.setData({
       customData: event.detail.value
+    })
+  },
+
+  bindProvisionedDevice() {
+    const deviceId = (this.data.connectedDeviceId || '').trim()
+
+    if (!deviceId || this.data.bindingDevice) {
+      return
+    }
+
+    this.setData({
+      bindingDevice: true
+    })
+
+    wx.showLoading({
+      title: '绑定设备中...',
+      mask: true
+    })
+
+    request({
+      url: BIND_DEVICE_URL,
+      method: 'POST',
+      withAuth: true,
+      header: {
+        'Content-Type': 'application/json'
+      },
+      data: {
+        deviceId
+      },
+      success: (response, responseData) => {
+        console.log('bind device after provision response:', response)
+
+        wx.hideLoading()
+        this.setData({
+          bindingDevice: false
+        })
+
+        if (responseData.resultCode !== 0) {
+          wx.showToast({
+            title: responseData.resultMsg || '绑定失败',
+            icon: 'none'
+          })
+          return
+        }
+
+        wx.showToast({
+          title: '绑定成功',
+          icon: 'success'
+        })
+
+        wx.navigateBack({
+          delta: 2,
+          fail: () => {
+            wx.reLaunch({
+              url: '/pages/index/index'
+            })
+          }
+        })
+      },
+      fail: (error) => {
+        console.error('bind device after provision failed:', error)
+        wx.hideLoading()
+        this.setData({
+          bindingDevice: false
+        })
+        wx.showToast({
+          title: '绑定失败',
+          icon: 'none'
+        })
+      }
     })
   },
 

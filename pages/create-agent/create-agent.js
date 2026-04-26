@@ -1,4 +1,4 @@
-const { getStoredToken, request } = require('../../utils/http')
+const { request } = require('../../utils/http')
 
 const CREATE_AGENT_URL = 'http://penholderoneos.llm.aiha.cloud:8099/user_bot'
 
@@ -57,7 +57,6 @@ Page({
   },
 
   submitForm() {
-    const token = getStoredToken()
     const {
       deviceId,
       modelName,
@@ -90,7 +89,7 @@ Page({
     request({
       url: CREATE_AGENT_URL,
       method: 'POST',
-      token,
+      withAuth: true,
       header: {
         'Content-Type': 'application/json'
       },
@@ -126,7 +125,7 @@ Page({
           submitting: false
         })
 
-        showToast('创建失败')
+        showToast(error && error.message ? error.message : '创建失败')
       }
     })
   }

@@ -1,4 +1,4 @@
-const { getStoredToken, request } = require('../../utils/http')
+const { request } = require('../../utils/http')
 const DEVICE_DETAIL_BASE_URL = 'http://penholderoneos.llm.aiha.cloud:8099/user_device/deviceInfo'
 const RESET_DEVICE_BASE_URL = 'http://penholderoneos.llm.aiha.cloud:8099/device_setting/reset'
 const UNBIND_DEVICE_URL = 'http://penholderoneos.llm.aiha.cloud:8099/appuser/bindDevice'
@@ -108,20 +108,10 @@ Page({
   },
 
   fetchDeviceDetail(deviceId) {
-    const token = getStoredToken()
-
-    if (!token) {
-      this.setData({
-        loading: false,
-        errorMessage: '缺少登录token'
-      })
-      return
-    }
-
     request({
       url: `${DEVICE_DETAIL_BASE_URL}/${encodeURIComponent(deviceId)}`,
       method: 'GET',
-      token,
+      withAuth: true,
       success: (response, responseData) => {
         console.log('device detail response:', response)
 
@@ -140,20 +130,14 @@ Page({
 
         this.setData({
           loading: false,
-          errorMessage: '获取设备详情失败'
+          errorMessage: error && error.message ? error.message : '获取设备详情失败'
         })
       }
     })
   },
 
   resetDevice() {
-    const token = getStoredToken()
     const { deviceId } = this.data
-
-    if (!token) {
-      showToast('缺少登录token')
-      return
-    }
 
     if (!deviceId) {
       showToast('缺少设备ID')
@@ -163,7 +147,7 @@ Page({
     request({
       url: `${RESET_DEVICE_BASE_URL}/${encodeURIComponent(deviceId)}`,
       method: 'POST',
-      token,
+      withAuth: true,
       success: (response, responseData) => {
         console.log('reset device response:', response)
 
@@ -176,19 +160,13 @@ Page({
       },
       fail: (error) => {
         console.error('reset device failed:', error)
-        showToast('重置失败')
+        showToast(error && error.message ? error.message : '重置失败')
       }
     })
   },
 
   unbindDevice() {
-    const token = getStoredToken()
     const { deviceId } = this.data
-
-    if (!token) {
-      showToast('缺少登录token')
-      return
-    }
 
     if (!deviceId) {
       showToast('缺少设备ID')
@@ -198,7 +176,7 @@ Page({
     request({
       url: UNBIND_DEVICE_URL,
       method: 'POST',
-      token,
+      withAuth: true,
       header: {
         'Content-Type': 'application/json'
       },
@@ -217,7 +195,7 @@ Page({
       },
       fail: (error) => {
         console.error('unbind device failed:', error)
-        showToast('解绑失败')
+        showToast(error && error.message ? error.message : '解绑失败')
       }
     })
   },
