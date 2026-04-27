@@ -1,7 +1,7 @@
 const xBlufi = require('../../utils/blufi/xBlufi.js')
-const { request } = require('../../utils/http')
+const { buildApiUrl, request } = require('../../utils/http')
 
-const BIND_DEVICE_URL = 'http://penholderoneos.llm.aiha.cloud:8099/appuser/bindDevice'
+const BIND_DEVICE_URL = buildApiUrl('/appuser/bindDevice')
 
 function showModal(options) {
   wx.showModal({

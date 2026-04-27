@@ -1,7 +1,7 @@
 const { addDeviceActions, devices } = require('../../utils/device-home-data')
-const { ensureAuthToken, request } = require('../../utils/http')
+const { buildApiUrl, ensureAuthToken, request } = require('../../utils/http')
 
-const BIND_DEVICE_URL = 'http://penholderoneos.llm.aiha.cloud:8099/appuser/bindDevice'
+const BIND_DEVICE_URL = buildApiUrl('/appuser/bindDevice')
 
 function showToast(title, icon = 'none') {
   wx.showToast({ title, icon })

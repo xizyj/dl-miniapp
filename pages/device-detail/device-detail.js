@@ -1,7 +1,7 @@
-const { request } = require('../../utils/http')
-const DEVICE_DETAIL_BASE_URL = 'http://penholderoneos.llm.aiha.cloud:8099/user_device/deviceInfo'
-const RESET_DEVICE_BASE_URL = 'http://penholderoneos.llm.aiha.cloud:8099/device_setting/reset'
-const UNBIND_DEVICE_URL = 'http://penholderoneos.llm.aiha.cloud:8099/appuser/bindDevice'
+const { buildApiUrl, request } = require('../../utils/http')
+const DEVICE_DETAIL_BASE_URL = buildApiUrl('/user_device/deviceInfo')
+const RESET_DEVICE_BASE_URL = buildApiUrl('/device_setting/reset')
+const UNBIND_DEVICE_URL = buildApiUrl('/appuser/bindDevice')
 const QUICK_ACTIONS = [
   {
     key: 'agent',

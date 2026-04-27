@@ -1,6 +1,6 @@
-const { request } = require('../../utils/http')
+const { buildApiUrl, request } = require('../../utils/http')
 
-const CREATE_AGENT_URL = 'http://penholderoneos.llm.aiha.cloud:8099/user_bot'
+const CREATE_AGENT_URL = buildApiUrl('/user_bot')
 
 function showToast(title, icon = 'none') {
   wx.showToast({

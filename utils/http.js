@@ -1,5 +1,6 @@
 const TOKEN_STORAGE_KEY = 'authToken'
-const AUTH_DEVICE_URL = 'http://penholderoneos.llm.aiha.cloud:8099/auth/device'
+const API_BASE_URL = 'https://aigo.8ms.xyz'
+const AUTH_DEVICE_URL = `${API_BASE_URL}/auth/device`
 const AUTH_DEVICE_ID = 'MYF-00011C00D5AD'
 
 let pendingTokenPromise = null
@@ -97,6 +98,18 @@ function getResponseData(response) {
   return response && response.data ? response.data : {}
 }
 
+function buildApiUrl(path) {
+  if (!path) {
+    return API_BASE_URL
+  }
+
+  if (/^https?:\/\//.test(path)) {
+    return path
+  }
+
+  return `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`
+}
+
 function sendRequest(options, resolvedToken) {
   const {
     url,
@@ -154,7 +167,9 @@ function request(options) {
 }
 
 module.exports = {
+  API_BASE_URL,
   TOKEN_STORAGE_KEY,
+  buildApiUrl,
   getStoredToken,
   setStoredToken,
   ensureAuthToken,

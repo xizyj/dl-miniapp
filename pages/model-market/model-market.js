@@ -1,7 +1,7 @@
-const { request } = require('../../utils/http')
+const { buildApiUrl, request } = require('../../utils/http')
 
-const MODEL_MARKET_URL = 'http://penholderoneos.llm.aiha.cloud:8099/gptmodel/list'
-const BIND_MODEL_BASE_URL = 'http://penholderoneos.llm.aiha.cloud:8099/gptmodel/bindDevice'
+const MODEL_MARKET_URL = buildApiUrl('/gptmodel/list')
+const BIND_MODEL_BASE_URL = buildApiUrl('/gptmodel/bindDevice')
 const DEFAULT_QUERY = ''
 const PAGE_SIZE = 10
 
