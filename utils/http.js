@@ -1,5 +1,5 @@
 const TOKEN_STORAGE_KEY = 'authToken'
-const API_BASE_URL = 'https://aigo.8ms.xyz'
+const API_BASE_URL = 'https://aigo.8ms.xyz/api'
 const AUTH_DEVICE_URL = `${API_BASE_URL}/auth/device`
 const AUTH_DEVICE_ID = 'MYF-00011C00D5AD'
 
