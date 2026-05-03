@@ -60,6 +60,43 @@
   padding: 0 24rpx;
 }
 
+.field-shell-picker {
+  justify-content: center;
+  height: 88rpx;
+  min-height: 88rpx;
+}
+
+.picker-shell {
+  width: 100%;
+}
+
+.picker-trigger {
+  display: block;
+  width: 100%;
+}
+
+.picker-value {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+}
+
+.picker-value-text {
+  display: block;
+  width: 100%;
+  font-size: 28rpx;
+  line-height: 1.5;
+  color: #102a43;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.picker-placeholder {
+  color: #9fb3c8;
+}
+
 .field-shell-disabled {
   background: #eef2f6;
 }

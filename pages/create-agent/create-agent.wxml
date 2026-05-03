@@ -38,9 +38,14 @@
 
     <view class="form-row form-row-block">
       <text class="form-label">模型标识</text>
-      <view class="field-shell">
-        <input class="form-input" value="{{model}}" data-field="model" bindinput="handleInput" placeholder="请输入模型标识" />
-        <text wx:if="{{model}}" class="clear-button" data-field="model" bindtap="clearField">清空</text>
+      <view class="picker-shell">
+        <picker class="picker-trigger" mode="selector" range="{{modelOptionLabels}}" value="{{modelIndex >= 0 ? modelIndex : 0}}" bindchange="handleModelChange" disabled="{{loadingModels || !modelOptionLabels.length}}">
+          <view class="field-shell field-shell-picker {{loadingModels || !modelOptionLabels.length ? 'field-shell-disabled' : ''}}">
+            <view class="picker-value {{model ? '' : 'picker-placeholder'}}">
+              <text class="picker-value-text">{{loadingModels ? '模型加载中...' : (modelOptionLabels.length ? modelOptionLabels[modelIndex] : '暂无可选模型')}}</text>
+            </view>
+          </view>
+        </picker>
       </view>
     </view>
 
