@@ -41,13 +41,5 @@
       <button bindtap="OnClickStart" disabled="{{!isInitOK}}" type="primary">{{isInitOK?"开始配网并发送自定义数据":"设备初始化失败或非2.4G网络"}}</button>
     </view>
 
-    <view class="weui-form__extra-area">
-      <view class="weui-footer">
-        <view class="weui-footer__links">
-          <navigator href="javascript:void(0);" class="weui-footer__link">https://github.com/xuhongv</navigator>
-        </view>
-        <view class="weui-footer__text">Copyright ©2019 半颗心脏 ver{{version}}</view>
-      </view>
-    </view>
   </view>
 </view>

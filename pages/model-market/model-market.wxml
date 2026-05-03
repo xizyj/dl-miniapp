@@ -1,50 +1,82 @@
 <view class="page-shell">
-  <view class="search-card card">
+  <view class="page-header">
+    <view class="page-header-spacer"></view>
+    <text class="page-title">模型市场</text>
+    <view class="page-header-actions">
+      <view class="page-header-dots">
+        <text class="header-dot header-dot-active"></text>
+        <text class="header-dot"></text>
+        <text class="header-dot"></text>
+      </view>
+      <text class="header-divider"></text>
+      <text class="header-short-line"></text>
+      <text class="header-ring"></text>
+    </view>
+  </view>
+
+  <view class="search-panel">
     <view class="search-row">
       <input
         class="search-input"
         value="{{query}}"
-        placeholder="搜索模型，可留空"
+        placeholder="请输入关键字"
         bindinput="handleQueryInput"
         confirm-type="search"
         bindconfirm="handleSearch"
       />
       <button class="search-button" bindtap="handleSearch">搜索</button>
     </view>
-    <text class="search-hint">支持空搜索，也可以输入关键词后再检索</text>
   </view>
 
-  <view wx:if="{{loading}}" class="state-card card">
+  <view wx:if="{{loading}}" class="state-card">
     <text class="state-text">加载中...</text>
   </view>
 
-  <view wx:elif="{{errorMessage}}" class="state-card card">
+  <view wx:elif="{{errorMessage}}" class="state-card">
     <text class="state-text">{{errorMessage}}</text>
   </view>
 
-  <view wx:elif="{{!models.length}}" class="state-card card">
+  <view wx:elif="{{!models.length}}" class="state-card">
     <text class="state-text">没有找到相关模型</text>
-    <text class="state-subtext">可以换一个关键词再试一次</text>
+    <text class="state-subtext">换个关键词再试一次</text>
   </view>
 
-  <view wx:else class="list-card card">
-    <swiper class="model-swiper" previous-margin="12rpx" next-margin="12rpx" current="{{activeIndex}}" bindchange="handleSwiperChange">
+  <view wx:else class="swiper-zone">
+    <swiper
+      class="model-swiper"
+      current="{{activeIndex}}"
+      previous-margin="72rpx"
+      next-margin="72rpx"
+      bindchange="handleSwiperChange"
+      easing-function="easeOutCubic"
+      duration="280"
+    >
       <swiper-item wx:for="{{models}}" wx:key="id">
         <view class="model-item-shell">
-          <view class="model-item">
-            <view class="model-top">
-              <text class="model-name">{{item.name}}</text>
-              <text class="model-badge">{{item.func}}</text>
+          <view class="model-card">
+            <view class="model-card-top">
+              <text class="model-status">{{item.statusLabel}}</text>
             </view>
+
+            <view class="model-art">
+              <view class="model-art-orb"></view>
+              <image class="model-art-image" src="../../images/logo.png" mode="aspectFit" />
+            </view>
+
+            <text class="model-name">{{item.name}}</text>
             <text class="model-code">{{item.model}}</text>
             <text class="model-desc">{{item.desc}}</text>
-            <text class="model-meta">最大上下文：{{item.maxTokens}}</text>
+            <text class="model-meta">最大上下文 {{item.maxTokens}}</text>
+
             <button class="bind-button" data-model-id="{{item.id}}" loading="{{bindingModelId === String(item.id)}}" bindtap="bindModel">绑定模型</button>
           </view>
         </view>
       </swiper-item>
     </swiper>
-    <text wx:if="{{loadingMore}}" class="swipe-hint">加载更多中...</text>
-    <text class="swipe-hint">左右滑动切换模型卡片</text>
+
+    <view class="swiper-footer">
+      <text wx:if="{{loadingMore}}" class="swipe-hint">加载更多中...</text>
+      <text wx:else class="swipe-hint">左右滑动切换模型卡片</text>
+    </view>
   </view>
 </view>

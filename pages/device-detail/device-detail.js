@@ -210,6 +210,13 @@ Page({
       return
     }
 
+    if (key === 'history') {
+      wx.navigateTo({
+        url: `/pages/chat-history/chat-history?deviceId=${encodeURIComponent(this.data.deviceId)}`
+      })
+      return
+    }
+
     if (key === 'market') {
       wx.navigateTo({
         url: `/pages/model-market/model-market?deviceId=${encodeURIComponent(this.data.deviceId)}`

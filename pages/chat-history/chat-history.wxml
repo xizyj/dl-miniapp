@@ -1,0 +1,44 @@
+<view class="page-shell">
+  <view class="hero-card">
+    <view class="hero-copy">
+      <text class="hero-title">历史对话</text>
+      <text class="hero-subtitle">查看设备最近的会话记录与回复内容</text>
+    </view>
+    <view class="hero-badge">
+      <text class="hero-badge-label">设备</text>
+      <text class="hero-badge-value">{{deviceId || '未传入'}}</text>
+    </view>
+  </view>
+
+  <view wx:if="{{loading}}" class="state-card">
+    <text class="state-text">加载中...</text>
+  </view>
+
+  <view wx:elif="{{errorMessage}}" class="state-card">
+    <text class="state-text">{{errorMessage}}</text>
+  </view>
+
+  <view wx:elif="{{!messages.length}}" class="state-card">
+    <text class="state-text">暂无历史对话</text>
+    <text class="state-subtext">接口返回为空时会显示在这里</text>
+  </view>
+
+  <view wx:else class="chat-list">
+    <view wx:for="{{messages}}" wx:key="id" class="chat-row chat-row-{{item.align}}">
+      <view class="chat-avatar chat-avatar-{{item.align}}">
+        <text class="chat-avatar-text">{{item.avatarText}}</text>
+      </view>
+      <view class="chat-bubble-wrap chat-bubble-wrap-{{item.align}}">
+        <view class="chat-meta chat-meta-{{item.align}}">
+          <text wx:if="{{item.time}}" class="chat-time">{{item.time}}</text>
+        </view>
+        <view class="chat-bubble chat-bubble-{{item.align}}">
+          <text class="chat-text">{{item.text}}</text>
+        </view>
+      </view>
+    </view>
+    <view wx:if="{{loadingMore}}" class="loading-more">
+      <text class="loading-more-text">加载更多对话中...</text>
+    </view>
+  </view>
+</view>

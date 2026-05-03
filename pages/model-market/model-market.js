@@ -12,7 +12,8 @@ function normalizeModel(item) {
     model: item.model || '未配置',
     desc: item.modelTips || item.modelPrefix || item.prompt || '暂无描述',
     func: item.func || '通用',
-    maxTokens: item.maxTokens || 0
+    maxTokens: item.maxTokens || 0,
+    statusLabel: item.statusName || item.func || '正常'
   }
 }
 

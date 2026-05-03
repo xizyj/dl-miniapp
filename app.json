@@ -4,6 +4,7 @@
     "pages/search/search",
     "pages/device/device",
     "pages/device-detail/device-detail",
+    "pages/chat-history/chat-history",
     "pages/model-market/model-market",
     "pages/create-agent/create-agent"
   ],

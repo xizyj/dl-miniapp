@@ -11,7 +11,7 @@ Page({
   data: {
     title: '我的设备',
     devices,
-    isLoggedIn: true,
+    isLoggedIn: false,
     loggingIn: false,
     bindModalVisible: false,
     bindDeviceId: '',
@@ -21,20 +21,30 @@ Page({
   },
 
   onLoad() {
-    this.restoreLoginState()
-    this.ensureTokenSilently()
+    this.bootstrapPage()
   },
 
-  restoreLoginState() {
+  restoreLoginState(isLoggedIn = true) {
     this.setData({
-      isLoggedIn: true
+      isLoggedIn,
+      loggingIn: false
     })
   },
 
-  ensureTokenSilently() {
-    ensureAuthToken().catch((error) => {
-      console.error('auto auth failed on index:', error)
+  bootstrapPage() {
+    this.setData({
+      loggingIn: true
     })
+
+    ensureAuthToken().then(
+      () => {
+        this.restoreLoginState(true)
+      },
+      (error) => {
+        console.error('auto auth failed on index:', error)
+        this.restoreLoginState(false)
+      }
+    )
   },
 
   setDrawerVisible(drawerVisible) {
