@@ -148,9 +148,23 @@ Page({
             connected: false
           })
 
+          let initErrorMessage = '设备初始化失败'
+          if (options.data && options.data.errMsg === 'service with target characteristics not found') {
+            const discoveredServiceIds = options.data.discoveredServiceIds || []
+            const hasCustomBusinessService = discoveredServiceIds.some((serviceId) => serviceId.indexOf('0000FD5C') === 0)
+
+            if (hasCustomBusinessService) {
+              initErrorMessage = '设备当前暴露的是业务服务FD5C，未进入BLUFI配网模式，请先让设备进入配网状态后重试'
+            } else {
+              initErrorMessage = '当前设备未暴露BLUFI配网特征，请确认固件已开启BLUFI并进入配网模式'
+            }
+          } else if (options.data && options.data.errMsg === 'read characteristic not found') {
+            initErrorMessage = '当前设备缺少BLUFI读特征，无法继续蓝牙配网'
+          }
+
           showModal({
             title: '温馨提示',
-            content: '设备初始化失败',
+            content: initErrorMessage,
             success: () => {
               wx.redirectTo({
                 url: '../search/search'
