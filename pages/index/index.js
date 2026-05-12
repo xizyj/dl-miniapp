@@ -1,5 +1,6 @@
-const { addDeviceActions, devices } = require('../../utils/device-home-data')
-const { buildApiUrl, ensureAuthToken, request } = require('../../utils/http')
+const { addDeviceActions, getHomeDevices, saveHomeDevice } = require('../../utils/device-home-data')
+const { normalizeDeviceId } = require('../../utils/device-id')
+const { buildApiUrl, ensureAuthToken, loginDevice, request } = require('../../utils/http')
 
 const BIND_DEVICE_URL = buildApiUrl('/appuser/bindDevice')
 
@@ -7,12 +8,35 @@ function showToast(title, icon = 'none') {
   wx.showToast({ title, icon })
 }
 
+function extractDeviceIdFromScanResult(scanResult) {
+  const rawResult = typeof scanResult === 'string' ? scanResult.trim() : ''
+
+  if (!rawResult) {
+    return ''
+  }
+
+  try {
+    const parsed = JSON.parse(rawResult)
+
+    if (parsed && typeof parsed.deviceId === 'string') {
+      return normalizeDeviceId(parsed.deviceId)
+    }
+  } catch (error) {
+    // Ignore non-JSON payloads and continue with URL/plain-text parsing.
+  }
+
+  const queryMatch = rawResult.match(/(?:^|[?&])deviceId=([^&#]+)/i)
+  if (queryMatch && queryMatch[1]) {
+    return normalizeDeviceId(decodeURIComponent(queryMatch[1]))
+  }
+
+  return normalizeDeviceId(rawResult)
+}
+
 Page({
   data: {
     title: '我的设备',
-    devices,
-    isLoggedIn: false,
-    loggingIn: false,
+    devices: [],
     bindModalVisible: false,
     bindDeviceId: '',
     bindingDevice: false,
@@ -21,30 +45,17 @@ Page({
   },
 
   onLoad() {
-    this.bootstrapPage()
+    this.refreshDevices()
   },
 
-  restoreLoginState(isLoggedIn = true) {
-    this.setData({
-      isLoggedIn,
-      loggingIn: false
-    })
+  onShow() {
+    this.refreshDevices()
   },
 
-  bootstrapPage() {
+  refreshDevices() {
     this.setData({
-      loggingIn: true
+      devices: getHomeDevices()
     })
-
-    ensureAuthToken().then(
-      () => {
-        this.restoreLoginState(true)
-      },
-      (error) => {
-        console.error('auto auth failed on index:', error)
-        this.restoreLoginState(false)
-      }
-    )
   },
 
   setDrawerVisible(drawerVisible) {
@@ -60,40 +71,7 @@ Page({
     })
   },
 
-  requireLogin() {
-    return this.data.isLoggedIn
-  },
-
-  handleLogin() {
-    if (this.data.loggingIn) {
-      return
-    }
-
-    this.setData({
-      loggingIn: true
-    })
-
-    ensureAuthToken({ forceRefresh: true }).then(
-      () => {
-        this.setData({
-          isLoggedIn: true,
-          loggingIn: false,
-          drawerVisible: false
-        })
-      },
-      (error) => {
-        console.error('miniapp enter failed:', error)
-        this.setData({ loggingIn: false })
-        showToast('登录失败')
-      }
-    )
-  },
-
   openAddDrawer() {
-    if (!this.requireLogin()) {
-      return
-    }
-
     this.setDrawerVisible(true)
   },
 
@@ -123,10 +101,10 @@ Page({
     })
   },
 
-  confirmBindDevice() {
-    const deviceId = (this.data.bindDeviceId || '').trim()
+  bindDevice(deviceId) {
+    const normalizedDeviceId = normalizeDeviceId(deviceId)
 
-    if (!deviceId) {
+    if (!normalizedDeviceId) {
       showToast('请输入设备ID')
       return
     }
@@ -139,38 +117,97 @@ Page({
       bindingDevice: true
     })
 
-    // The bind API reuses the login token already cached on the device.
-    request({
-      url: BIND_DEVICE_URL,
-      method: 'POST',
-      withAuth: true,
-      header: {
-        'Content-Type': 'application/json'
-      },
-      data: {
-        deviceId
-      },
-      success: (response, responseData) => {
-        console.log('bind device response:', response)
+    loginDevice(normalizedDeviceId).then(
+      (token) => {
+        request({
+          url: BIND_DEVICE_URL,
+          method: 'POST',
+          token,
+          header: {
+            'Content-Type': 'application/json'
+          },
+          data: {
+            deviceId: normalizedDeviceId
+          },
+          success: (response, responseData) => {
+            console.log('bind device response:', response)
 
-        if (responseData.resultCode !== 0) {
-          this.setData({ bindingDevice: false })
-          showToast(responseData.resultMsg || '绑定失败')
+            if (responseData.resultCode !== 0) {
+              this.setData({ bindingDevice: false })
+              showToast(responseData.resultMsg || '绑定失败')
+              return
+            }
+
+            saveHomeDevice(normalizedDeviceId)
+
+            loginDevice(normalizedDeviceId).then(
+              () => {
+                this.refreshDevices()
+                this.setData({
+                  bindingDevice: false,
+                  bindModalVisible: false,
+                  bindDeviceId: '',
+                  drawerVisible: false
+                })
+                showToast('绑定成功', 'success')
+              },
+              (refreshError) => {
+                console.error('refresh token after bind failed:', refreshError)
+                this.refreshDevices()
+                this.setData({
+                  bindingDevice: false,
+                  bindModalVisible: false,
+                  bindDeviceId: '',
+                  drawerVisible: false
+                })
+                showToast('绑定成功，token刷新失败')
+              }
+            )
+          },
+          fail: (error) => {
+            console.error('bind device failed:', error)
+            this.setData({ bindingDevice: false })
+            showToast('绑定失败')
+          }
+        })
+      },
+      (error) => {
+        console.error('auth device failed before bind:', error)
+        this.setData({ bindingDevice: false })
+        showToast('设备登录失败')
+      }
+    )
+  },
+
+  confirmBindDevice() {
+    this.bindDevice(this.data.bindDeviceId)
+  },
+
+  startScanBind() {
+    if (this.data.bindingDevice) {
+      return
+    }
+
+    this.closeAddDrawer()
+
+    wx.scanCode({
+      success: (result) => {
+        const deviceId = extractDeviceIdFromScanResult(result.result)
+
+        if (!deviceId) {
+          showToast('未识别到设备ID')
           return
         }
 
-        this.setData({
-          bindingDevice: false,
-          bindModalVisible: false,
-          bindDeviceId: ''
-        })
-
-        showToast('绑定成功', 'success')
+        this.bindDevice(deviceId)
       },
       fail: (error) => {
-        console.error('bind device failed:', error)
-        this.setData({ bindingDevice: false })
-        showToast('绑定失败')
+        if (error && error.errMsg && error.errMsg.indexOf('cancel') !== -1) {
+          return
+        }
+
+        console.error('scan device failed:', error)
+        showToast('扫码失败')
       }
     })
   },
@@ -178,10 +215,6 @@ Page({
   noop() {},
 
   openDeviceDetail(event) {
-    if (!this.requireLogin()) {
-      return
-    }
-
     const { deviceId } = event.currentTarget.dataset
 
     if (!deviceId) {
@@ -194,10 +227,6 @@ Page({
   },
 
   handleActionTap(event) {
-    if (!this.requireLogin()) {
-      return
-    }
-
     const { action } = event.currentTarget.dataset
 
     if (action === 'cancel') {
@@ -210,6 +239,11 @@ Page({
       wx.navigateTo({
         url: '/pages/search/search?autoSearch=1'
       })
+      return
+    }
+
+    if (action === 'scan') {
+      this.startScanBind()
       return
     }
 

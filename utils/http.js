@@ -1,9 +1,10 @@
 const TOKEN_STORAGE_KEY = 'authToken'
+const AUTH_DEVICE_ID_STORAGE_KEY = 'authDeviceId'
 const API_BASE_URL = 'https://aigo.8ms.xyz/api'
 const AUTH_DEVICE_URL = `${API_BASE_URL}/auth/device`
-const AUTH_DEVICE_ID = 'MYF-00011C00D5AD'
 
 let pendingTokenPromise = null
+let pendingTokenDeviceId = ''
 
 function getStoredToken() {
   return wx.getStorageSync(TOKEN_STORAGE_KEY)
@@ -11,6 +12,19 @@ function getStoredToken() {
 
 function setStoredToken(token) {
   wx.setStorageSync(TOKEN_STORAGE_KEY, token)
+}
+
+function getStoredAuthDeviceId() {
+  return wx.getStorageSync(AUTH_DEVICE_ID_STORAGE_KEY)
+}
+
+function setStoredAuthDeviceId(deviceId) {
+  if (!deviceId) {
+    wx.removeStorageSync(AUTH_DEVICE_ID_STORAGE_KEY)
+    return
+  }
+
+  wx.setStorageSync(AUTH_DEVICE_ID_STORAGE_KEY, deviceId)
 }
 
 function extractToken(response) {
@@ -42,18 +56,26 @@ function extractToken(response) {
 }
 
 function ensureAuthToken(options = {}) {
-  const { forceRefresh = false } = options
-  const storedToken = forceRefresh ? '' : getStoredToken()
+  const { forceRefresh = false, deviceId = '' } = options
+  const requestedDeviceId = typeof deviceId === 'string' ? deviceId.trim() : ''
+  const storedDeviceId = getStoredAuthDeviceId()
+  const resolvedDeviceId = requestedDeviceId || storedDeviceId
+  const shouldReuseStoredToken = !forceRefresh && (!requestedDeviceId || requestedDeviceId === storedDeviceId)
+  const storedToken = shouldReuseStoredToken ? getStoredToken() : ''
+
+  if (!resolvedDeviceId) {
+    return Promise.reject(new Error('未找到可用设备ID'))
+  }
 
   if (storedToken) {
     return Promise.resolve(storedToken)
   }
 
-  if (pendingTokenPromise) {
+  if (pendingTokenPromise && pendingTokenDeviceId === resolvedDeviceId && !forceRefresh) {
     return pendingTokenPromise
   }
 
-  pendingTokenPromise = new Promise((resolve, reject) => {
+  const tokenPromise = new Promise((resolve, reject) => {
     wx.request({
       url: AUTH_DEVICE_URL,
       method: 'POST',
@@ -61,7 +83,7 @@ function ensureAuthToken(options = {}) {
         'Content-Type': 'application/json'
       },
       data: {
-        deviceId: AUTH_DEVICE_ID
+        deviceId: resolvedDeviceId
       },
       success: (response) => {
         const token = extractToken(response)
@@ -73,6 +95,7 @@ function ensureAuthToken(options = {}) {
           return
         }
 
+        setStoredAuthDeviceId(resolvedDeviceId)
         setStoredToken(token)
         resolve(token)
       },
@@ -82,16 +105,32 @@ function ensureAuthToken(options = {}) {
     })
   })
 
-  return pendingTokenPromise.then(
+  pendingTokenPromise = tokenPromise
+  pendingTokenDeviceId = resolvedDeviceId
+
+  return tokenPromise.then(
     (token) => {
-      pendingTokenPromise = null
+      if (pendingTokenPromise === tokenPromise) {
+        pendingTokenPromise = null
+        pendingTokenDeviceId = ''
+      }
       return token
     },
     (error) => {
-      pendingTokenPromise = null
+      if (pendingTokenPromise === tokenPromise) {
+        pendingTokenPromise = null
+        pendingTokenDeviceId = ''
+      }
       throw error
     }
   )
+}
+
+function loginDevice(deviceId) {
+  return ensureAuthToken({
+    forceRefresh: true,
+    deviceId
+  })
 }
 
 function getResponseData(response) {
@@ -168,9 +207,13 @@ function request(options) {
 
 module.exports = {
   API_BASE_URL,
+  AUTH_DEVICE_ID_STORAGE_KEY,
   TOKEN_STORAGE_KEY,
   buildApiUrl,
+  getStoredAuthDeviceId,
   getStoredToken,
+  loginDevice,
+  setStoredAuthDeviceId,
   setStoredToken,
   ensureAuthToken,
   getResponseData,

@@ -6,26 +6,18 @@
     </view>
     <view class="weui-form__control-area">
       <view class="weui-cells__group weui-cells__group_form">
-        <view class="weui-cells__title">需配置入网当前路由器SSID：{{ssid}}</view>
+        <view class="weui-cells__title">当前手机 Wi-Fi：{{ssid || '未获取到'}}</view>
         <view class="weui-cells weui-cells_form">
           <view class="weui-cell">
-            <picker bindchange="bindPickerChange" value="{{index}}" range="{{array}}">
-              <view class="picker">
-                Wi-Fi列表：{{array[index]}}
-              </view>
-            </picker>
+            <view class="weui-cell__bd">
+              <text>{{wifiLoading ? '正在读取当前 Wi-Fi...' : (ssid || '请确认手机已连接 Wi-Fi，并点击刷新')}}</text>
+            </view>
+            <button size="mini" bindtap="refreshCurrentWifi">刷新</button>
           </view>
           <view class="weui-cell">
             <view class="weui-cell__hd"><label class="weui-label">密码：</label></view>
             <view class="weui-cell__bd">
               <input class="weui-input" value="{{password}}" bindinput="bindPasswordInput" type="text" placeholder="在此输入路由器密码" />
-            </view>
-          </view>
-
-          <view class="weui-cell">
-            <view class="weui-cell__hd"><label class="weui-label">数据：</label></view>
-            <view class="weui-cell__bd">
-              <input class="weui-input" bindinput="bindCustomDataInput" type="text" placeholder="在此输入自定义数据" />
             </view>
           </view>
         </view>
@@ -38,7 +30,7 @@
       </label>
     </view>
     <view class="weui-form__opr-area">
-      <button bindtap="OnClickStart" disabled="{{!isInitOK}}" type="primary">{{isInitOK?"开始配网并发送自定义数据":"设备初始化失败或非2.4G网络"}}</button>
+      <button bindtap="OnClickStart" disabled="{{!isInitOK || wifiLoading}}" type="primary">{{isInitOK ? '开始配网' : '设备初始化失败'}}</button>
     </view>
 
   </view>

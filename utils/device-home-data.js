@@ -1,29 +1,55 @@
-const deviceOverview = [
-  {
-    label: '在线设备',
-    value: '4 台'
-  },
-  {
-    label: '离线设备',
-    value: '1 台'
-  },
-  {
-    label: '今日提醒',
-    value: '2 条'
-  }
-]
+const HOME_DEVICE_STORAGE_KEY = 'homeDevice'
 
-const devices = [
-  {
-    id: 'MYF-00011C00D5AD',
-    name: '目标设备',
+function createHomeDevice(deviceId, name = '我的设备') {
+  return {
+    id: deviceId,
+    name,
     room: '默认空间',
     category: '网关',
     online: true,
     statusText: '在线',
-    detail: '设备ID: MYF-00011C00D5AD'
+    detail: `设备ID: ${deviceId}`
   }
-]
+}
+
+function getStoredHomeDevice() {
+  const storedDevice = wx.getStorageSync(HOME_DEVICE_STORAGE_KEY)
+
+  if (!storedDevice || typeof storedDevice !== 'object') {
+    return null
+  }
+
+  const deviceId = typeof storedDevice.id === 'string' ? storedDevice.id.trim() : ''
+
+  if (!deviceId) {
+    return null
+  }
+
+  return createHomeDevice(deviceId, storedDevice.name || '我的设备')
+}
+
+function getHomeDevices() {
+  const device = getStoredHomeDevice()
+
+  return device ? [device] : []
+}
+
+function saveHomeDevice(deviceInfo) {
+  const normalizedDevice = typeof deviceInfo === 'string'
+    ? createHomeDevice(deviceInfo.trim())
+    : createHomeDevice(
+      typeof deviceInfo.deviceId === 'string' ? deviceInfo.deviceId.trim() : '',
+      deviceInfo.name || '我的设备'
+    )
+
+  if (!normalizedDevice.id) {
+    return null
+  }
+
+  wx.setStorageSync(HOME_DEVICE_STORAGE_KEY, normalizedDevice)
+
+  return normalizedDevice
+}
 
 const addDeviceActions = [
   {
@@ -46,6 +72,9 @@ const addDeviceActions = [
 
 module.exports = {
   addDeviceActions,
-  deviceOverview,
-  devices
+  HOME_DEVICE_STORAGE_KEY,
+  createHomeDevice,
+  getHomeDevices,
+  getStoredHomeDevice,
+  saveHomeDevice
 }

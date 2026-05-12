@@ -1,4 +1,5 @@
 let tempTimer = 0;
+let rawProvisionResultTimer = 0;
 let client = null;
 let util = null
 let mDeviceEvent = null
@@ -35,6 +36,7 @@ let self = {
     service_uuid: "0000FFFF-0000-1000-8000-00805F9B34FB",
     characteristic_write_uuid: "0000FF01-0000-1000-8000-00805F9B34FB",
     characteristic_read_uuid: "0000FF02-0000-1000-8000-00805F9B34FB",
+    useRawCredentialPayload: false,
     customData: null,
     md5Key: 0,
   }
@@ -70,8 +72,73 @@ function getCharCodeat(str) {
   return list;
 }
 
+function getUtf8Bytes(str) {
+  var encoded = encodeURIComponent(str || '');
+  var bytes = [];
+
+  for (var i = 0; i < encoded.length; i++) {
+    var current = encoded.charAt(i);
+
+    if (current === '%') {
+      bytes.push(parseInt(encoded.substr(i + 1, 2), 16));
+      i += 2;
+      continue;
+    }
+
+    bytes.push(current.charCodeAt(0));
+  }
+
+  return bytes;
+}
+
+function buildWifiCredentialPayload() {
+  var ssidBytes = getUtf8Bytes(self.data.ssid);
+  var passwordBytes = getUtf8Bytes(self.data.password);
+
+  if (ssidBytes.length > 255 || passwordBytes.length > 255) {
+    return null;
+  }
+
+  return [ssidBytes.length].concat(ssidBytes, [passwordBytes.length], passwordBytes);
+}
+
+function formatBytesAsHex(bytes) {
+  return bytes.map(function (item) {
+    return ('00' + item.toString(16)).slice(-2);
+  }).join(' ');
+}
+
 function normalizeBleUuid(uuid) {
   return (uuid || '').replace(/-/g, '').toUpperCase();
+}
+
+function getBleProfiles() {
+  return [
+    {
+      serviceUuid: '0000FFFF-0000-1000-8000-00805F9B34FB',
+      writeCharacteristicUuid: '0000FF01-0000-1000-8000-00805F9B34FB',
+      readCharacteristicUuid: '0000FF02-0000-1000-8000-00805F9B34FB',
+      useSecurity: true,
+      useChecksum: true,
+      useRawCredentialPayload: false
+    },
+    {
+      serviceUuid: '0000FD5C-0000-1000-8000-00805F9B34FB',
+      writeCharacteristicUuid: '0000FD5E-0000-1000-8000-00805F9B34FB',
+      readCharacteristicUuid: '0000FD5E-0000-1000-8000-00805F9B34FB',
+      useSecurity: false,
+      useChecksum: false,
+      useRawCredentialPayload: true
+    }
+  ];
+}
+
+function encodeBlePayload(data) {
+  if (self.data.isEncrypt) {
+    return util.encrypt(aesjs, self.data.md5Key, sequenceControl, data, self.data.isChecksum);
+  }
+
+  return data;
 }
 
 
@@ -162,6 +229,11 @@ function getSecret(deviceId, serviceId, characteristicId, client, kBytes, pBytes
 }
 
 function writeDeviceRouterInfoStart(deviceId, serviceId, characteristicId, data) {
+  if (self.data.useRawCredentialPayload) {
+    writeRawWifiCredentialPayload(deviceId, serviceId, characteristicId);
+    return;
+  }
+
   var obj = {},
     frameControl = 0;
   sequenceControl = parseInt(sequenceControl) + 1;
@@ -172,7 +244,7 @@ function writeDeviceRouterInfoStart(deviceId, serviceId, characteristicId, data)
     obj = util.isSubcontractor([self.data.defaultData], self.data.isChecksum, sequenceControl, true);
     frameControl = util.getFrameCTRLValue(self.data.isEncrypt, self.data.isChecksum, util.DIRECTION_OUTPUT, false, obj.flag);
   }
-  var defaultData = util.encrypt(aesjs, self.data.md5Key, sequenceControl, obj.lenData, true);
+  var defaultData = encodeBlePayload(obj.lenData);
   var value = util.writeData(util.PACKAGE_CONTROL_VALUE, util.SUBTYPE_WIFI_MODEl, frameControl, sequenceControl, obj.len, defaultData);
   var typedArray = new Uint8Array(value)
   wx.writeBLECharacteristicValue({
@@ -184,10 +256,55 @@ function writeDeviceRouterInfoStart(deviceId, serviceId, characteristicId, data)
       if (obj.flag) {
         writeDeviceRouterInfoStart(deviceId, serviceId, characteristicId, obj.laveData);
       } else {
-        writeRouterSsid(deviceId, serviceId, characteristicId, null);
+        writeWifiCredentialPayload(deviceId, serviceId, characteristicId, null);
       }
     },
     fail: function (res) {
+    }
+  })
+}
+
+function writeRawWifiCredentialPayload(deviceId, serviceId, characteristicId) {
+  var wifiCredentialData = buildWifiCredentialPayload();
+
+  if (!wifiCredentialData) {
+    console.error('raw wifi credential payload is invalid');
+    return;
+  }
+
+  console.log('[blufi] send raw wifi payload', formatBytesAsHex(wifiCredentialData));
+
+  wx.writeBLECharacteristicValue({
+    deviceId: deviceId,
+    serviceId: serviceId,
+    characteristicId: characteristicId,
+    value: new Uint8Array(wifiCredentialData).buffer,
+    success: function (res) {
+      console.log('[blufi] raw wifi payload sent', res);
+      clearTimeout(rawProvisionResultTimer);
+      rawProvisionResultTimer = setTimeout(function () {
+        mDeviceEvent.notifyDeviceMsgEvent({
+          'type': mDeviceEvent.XBLUFI_TYPE.TYPE_CONNECT_ROUTER_RESULT,
+          'result': true,
+          'data': {
+            'progress': 100,
+            'ssid': self.data.ssid || ''
+          }
+        });
+      }, 3000);
+    },
+    fail: function (res) {
+      console.log('[blufi] raw wifi payload send failed', res);
+      clearTimeout(rawProvisionResultTimer);
+      mDeviceEvent.notifyDeviceMsgEvent({
+        'type': mDeviceEvent.XBLUFI_TYPE.TYPE_CONNECT_ROUTER_RESULT,
+        'result': false,
+        'data': {
+          'progress': 0,
+          'ssid': self.data.ssid || '',
+          'error': res
+        }
+      });
     }
   })
 }
@@ -204,7 +321,7 @@ function writeCutomsData(deviceId, serviceId, characteristicId, data) {
     obj = util.isSubcontractor(ssidData, self.data.isChecksum, sequenceControl, self.data.isEncrypt);
     frameControl = util.getFrameCTRLValue(self.data.isEncrypt, self.data.isChecksum, util.DIRECTION_OUTPUT, false, obj.flag);
   }
-  var defaultData = util.encrypt(aesjs, self.data.md5Key, sequenceControl, obj.lenData, true);
+  var defaultData = encodeBlePayload(obj.lenData);
   var value = util.writeData(util.PACKAGE_VALUE, util.SUBTYPE_CUSTOM_DATA, frameControl, sequenceControl, obj.len, defaultData);
   var typedArray = new Uint8Array(value)
   wx.writeBLECharacteristicValue({
@@ -245,7 +362,7 @@ function writeGetNearRouterSsid(deviceId, serviceId, characteristicId, data) {
 
 
 
-function writeRouterSsid(deviceId, serviceId, characteristicId, data) {
+function writeWifiCredentialPayload(deviceId, serviceId, characteristicId, data) {
   var obj = {},
     frameControl = 0;
   sequenceControl = parseInt(sequenceControl) + 1;
@@ -253,11 +370,18 @@ function writeRouterSsid(deviceId, serviceId, characteristicId, data) {
     obj = util.isSubcontractor(data, self.data.isChecksum, sequenceControl, self.data.isEncrypt);
     frameControl = util.getFrameCTRLValue(self.data.isEncrypt, self.data.isChecksum, util.DIRECTION_OUTPUT, false, obj.flag);
   } else {
-    var ssidData = getCharCodeat(self.data.ssid);
-    obj = util.isSubcontractor(ssidData, self.data.isChecksum, sequenceControl, self.data.isEncrypt);
+    var wifiCredentialData = buildWifiCredentialPayload();
+
+    if (!wifiCredentialData) {
+      console.error('wifi credential payload is invalid');
+      return;
+    }
+
+    console.log('[blufi] send framed wifi payload', formatBytesAsHex(wifiCredentialData));
+    obj = util.isSubcontractor(wifiCredentialData, self.data.isChecksum, sequenceControl, self.data.isEncrypt);
     frameControl = util.getFrameCTRLValue(self.data.isEncrypt, self.data.isChecksum, util.DIRECTION_OUTPUT, false, obj.flag);
   }
-  var defaultData = util.encrypt(aesjs, self.data.md5Key, sequenceControl, obj.lenData, true);
+  var defaultData = encodeBlePayload(obj.lenData);
   var value = util.writeData(util.PACKAGE_VALUE, util.SUBTYPE_SET_SSID, frameControl, sequenceControl, obj.len, defaultData);
   var typedArray = new Uint8Array(value)
   wx.writeBLECharacteristicValue({
@@ -267,46 +391,14 @@ function writeRouterSsid(deviceId, serviceId, characteristicId, data) {
     value: typedArray.buffer,
     success: function (res) {
       if (obj.flag) {
-        writeRouterSsid(deviceId, serviceId, characteristicId, obj.laveData);
+        writeWifiCredentialPayload(deviceId, serviceId, characteristicId, obj.laveData);
       } else {
-        writeDevicePwd(deviceId, serviceId, characteristicId, null);
+        writeDeviceEnd(deviceId, serviceId, characteristicId, null);
       }
     },
     fail: function (res) {
       //console.log(257);
     }
-  })
-}
-
-function writeDevicePwd(deviceId, serviceId, characteristicId, data) {
-  var obj = {},
-    frameControl = 0;
-  sequenceControl = parseInt(sequenceControl) + 1;
-  if (!util._isEmpty(data)) {
-    obj = util.isSubcontractor(data, self.data.isChecksum, sequenceControl, self.data.isEncrypt);
-    frameControl = util.getFrameCTRLValue(self.data.isEncrypt, self.data.isChecksum, util.DIRECTION_OUTPUT, false, obj.flag);
-  } else {
-    var pwdData = getCharCodeat(self.data.password);
-    obj = util.isSubcontractor(pwdData, self.data.isChecksum, sequenceControl, self.data.isEncrypt);
-    frameControl = util.getFrameCTRLValue(self.data.isEncrypt, self.data.isChecksum, util.DIRECTION_OUTPUT, false, obj.flag);
-  }
-  var defaultData = util.encrypt(aesjs, self.data.md5Key, sequenceControl, obj.lenData, true);
-  var value = util.writeData(util.PACKAGE_VALUE, util.SUBTYPE_SET_PWD, frameControl, sequenceControl, obj.len, defaultData);
-  var typedArray = new Uint8Array(value)
-
-  wx.writeBLECharacteristicValue({
-    deviceId: deviceId,
-    serviceId: serviceId,
-    characteristicId: characteristicId,
-    value: typedArray.buffer,
-    success: function (res) {
-      if (obj.flag) {
-        writeDevicePwd(deviceId, serviceId, characteristicId, obj.laveData);
-      } else {
-        writeDeviceEnd(deviceId, serviceId, characteristicId, null);
-      }
-    },
-    fail: function (res) { }
   })
 }
 
@@ -577,6 +669,7 @@ function init() {
   mDeviceEvent.listenInitBleEsp32(true, function (options) {
     sequenceControl = 0;
     sequenceNumber = -1;
+    clearTimeout(rawProvisionResultTimer);
     console.log('[blufi] init start', options)
     self = null
     self = {
@@ -604,6 +697,8 @@ function init() {
         service_uuid: "0000FFFF-0000-1000-8000-00805F9B34FB",
         characteristic_write_uuid: "0000FF01-0000-1000-8000-00805F9B34FB",
         characteristic_read_uuid: "0000FF02-0000-1000-8000-00805F9B34FB",
+        bleProfiles: getBleProfiles(),
+        useRawCredentialPayload: false,
         customData: null,
         md5Key: 0,
       }
@@ -620,8 +715,7 @@ function init() {
           return service.uuid;
         }))
         if (services.length > 0) {
-          var targetReadCharacteristicUuid = normalizeBleUuid(self.data.characteristic_read_uuid);
-          var targetWriteCharacteristicUuid = normalizeBleUuid(self.data.characteristic_write_uuid);
+          var profiles = self.data.bleProfiles || getBleProfiles();
 
           function tryInitWithService(serviceIndex) {
             if (serviceIndex >= services.length) {
@@ -642,6 +736,21 @@ function init() {
             }
 
             var serviceId = services[serviceIndex].uuid;
+            var normalizedServiceId = normalizeBleUuid(serviceId);
+            var matchedProfile = null;
+
+            for (var profileIndex = 0; profileIndex < profiles.length; profileIndex++) {
+              if (normalizeBleUuid(profiles[profileIndex].serviceUuid) === normalizedServiceId) {
+                matchedProfile = profiles[profileIndex];
+                break;
+              }
+            }
+
+            if (!matchedProfile) {
+              tryInitWithService(serviceIndex + 1);
+              return;
+            }
+
             console.log('[blufi] probing service', serviceId)
             wx.getBLEDeviceCharacteristics({
               deviceId: deviceId,
@@ -660,6 +769,8 @@ function init() {
 
                 var readCharacteristicId = '';
                 var writeCharacteristicId = '';
+                var targetReadCharacteristicUuid = normalizeBleUuid(matchedProfile.readCharacteristicUuid);
+                var targetWriteCharacteristicUuid = normalizeBleUuid(matchedProfile.writeCharacteristicUuid);
 
                 for (var j = 0; j < list.length; j++) {
                   var normalizedUuid = normalizeBleUuid(list[j].uuid);
@@ -672,12 +783,30 @@ function init() {
                 }
 
                 if (!readCharacteristicId || !writeCharacteristicId) {
+                  for (var k = 0; k < list.length; k++) {
+                    var properties = list[k].properties || {};
+                    if (!writeCharacteristicId && (properties.write || properties.writeNoResponse)) {
+                      writeCharacteristicId = list[k].uuid;
+                    }
+                    if (!readCharacteristicId && (properties.notify || properties.read || properties.indicate)) {
+                      readCharacteristicId = list[k].uuid;
+                    }
+                  }
+                }
+
+                if (!readCharacteristicId || !writeCharacteristicId) {
                   tryInitWithService(serviceIndex + 1);
                   return;
                 }
 
                 self.data.serviceId = serviceId;
                 self.data.uuid = writeCharacteristicId;
+                self.data.service_uuid = matchedProfile.serviceUuid;
+                self.data.characteristic_write_uuid = matchedProfile.writeCharacteristicUuid;
+                self.data.characteristic_read_uuid = matchedProfile.readCharacteristicUuid;
+                self.data.isEncrypt = matchedProfile.useSecurity !== false;
+                self.data.isChecksum = matchedProfile.useChecksum !== false;
+                self.data.useRawCredentialPayload = matchedProfile.useRawCredentialPayload === true;
                 console.log('[blufi] matched service', serviceId)
                 console.log('[blufi] matched write characteristic', writeCharacteristicId)
                 console.log('[blufi] enable notify on read characteristic', readCharacteristicId)
@@ -689,6 +818,22 @@ function init() {
                   success: function (res) {
                     console.log('[blufi] notify enabled', res)
                     let characteristicId = self.data.uuid || self.data.characteristic_write_uuid
+                    if (!self.data.isEncrypt) {
+                      console.log('[blufi] skip security negotiation for profile', matchedProfile.serviceUuid)
+                      mDeviceEvent.notifyDeviceMsgEvent({
+                        'type': mDeviceEvent.XBLUFI_TYPE.TYPE_INIT_ESP32_RESULT,
+                        'result': true,
+                        'data': {
+                          deviceId,
+                          serviceId,
+                          characteristicId,
+                          profile: matchedProfile.serviceUuid,
+                          security: 'disabled'
+                        }
+                      });
+                      return;
+                    }
+
                     client = util.blueDH(util.DH_P, util.DH_G, crypto);
                     var kBytes = util.uint8ArrayToArray(client.getPublicKey());
                     var pBytes = util.hexByInt(util.DH_P);

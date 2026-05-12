@@ -1,7 +1,10 @@
 const xBlufi = require('../../utils/blufi/xBlufi.js')
-const { buildApiUrl, request } = require('../../utils/http')
+const { normalizeDeviceId } = require('../../utils/device-id')
+const { saveHomeDevice } = require('../../utils/device-home-data')
+const { buildApiUrl, loginDevice, request } = require('../../utils/http')
 
 const BIND_DEVICE_URL = buildApiUrl('/appuser/bindDevice')
+const PROVISION_TIMEOUT_MS = 20000
 
 function showModal(options) {
   wx.showModal({
@@ -14,15 +17,13 @@ Page({
   data: {
     version: '2.2',
     name: '',
-    index: 0,
-    array: [],
     ssid: '',
     connectedDeviceId: '',
     connected: true,
     isInitOK: false,
     password: '',
-    customData: '',
-    bindingDevice: false
+    bindingDevice: false,
+    wifiLoading: false
   },
 
   onLoad(options) {
@@ -42,9 +43,16 @@ Page({
     wx.showLoading({
       title: '设备初始化中'
     })
+
+    this.loadCurrentWifi()
+  },
+
+  onShow() {
+    this.loadCurrentWifi()
   },
 
   onUnload() {
+    this.clearProvisionTimeout()
     console.log('unload')
 
     xBlufi.notifyConnectBle({
@@ -76,6 +84,7 @@ Page({
         break
 
       case xBlufi.XBLUFI_TYPE.TYPE_CONNECT_ROUTER_RESULT:
+        this.clearProvisionTimeout()
         wx.hideLoading()
 
         if (!options.result) {
@@ -98,13 +107,6 @@ Page({
                 data: this.data.password
               })
 
-              if (this.data.customData) {
-                // Custom payload can be sent immediately after provisioning completes.
-                xBlufi.notifySendCustomData({
-                  customData: this.data.customData
-                })
-              }
-
               this.bindProvisionedDevice()
             }
           })
@@ -120,16 +122,6 @@ Page({
         break
 
       case xBlufi.XBLUFI_TYPE.TYPE_CONNECT_NEAR_ROUTER_LISTS:
-        wx.hideLoading()
-
-        if (!options.data.SSID) {
-          break
-        }
-
-        this.setData({
-          array: this.data.array.concat(options.data.SSID)
-        })
-        console.log(this.data.array)
         break
 
       case xBlufi.XBLUFI_TYPE.TYPE_INIT_ESP32_RESULT:
@@ -138,10 +130,10 @@ Page({
 
         if (options.result) {
           console.log('初始化成功')
-          xBlufi.notifySendGetNearRouterSsid()
-          wx.showLoading({
-            title: '模组获取周围WiFi列表...'
+          this.setData({
+            isInitOK: true
           })
+          this.loadCurrentWifi()
         } else {
           console.log('初始化失败')
           this.setData({
@@ -176,6 +168,56 @@ Page({
     }
   },
 
+  loadCurrentWifi() {
+    if (typeof wx.startWifi !== 'function' || typeof wx.getConnectedWifi !== 'function') {
+      return
+    }
+
+    this.setData({
+      wifiLoading: true
+    })
+
+    wx.startWifi({
+      success: () => {
+        this.readCurrentWifi()
+      },
+      fail: (error) => {
+        if (error && error.errMsg && error.errMsg.indexOf('already started') !== -1) {
+          this.readCurrentWifi()
+          return
+        }
+
+        console.error('start wifi failed:', error)
+        this.setData({
+          wifiLoading: false
+        })
+      }
+    })
+  },
+
+  readCurrentWifi() {
+    wx.getConnectedWifi({
+      success: (result) => {
+        const wifi = result && result.wifi ? result.wifi : {}
+        const ssid = typeof wifi.SSID === 'string' ? wifi.SSID.trim() : ''
+        const cachedPassword = ssid ? wx.getStorageSync(ssid) : ''
+
+        this.setData({
+          ssid,
+          password: cachedPassword || this.data.password,
+          wifiLoading: false
+        })
+      },
+      fail: (error) => {
+        console.error('get connected wifi failed:', error)
+        this.setData({
+          wifiLoading: false,
+          ssid: ''
+        })
+      }
+    })
+  },
+
   OnClickStart() {
     if (!this.data.ssid) {
       wx.showToast({
@@ -197,10 +239,31 @@ Page({
       title: '正在配网',
       mask: true
     })
+    this.startProvisionTimeout()
     xBlufi.notifySendRouterSsidAndPassword({
       ssid: this.data.ssid,
       password: this.data.password
     })
+  },
+
+  startProvisionTimeout() {
+    this.clearProvisionTimeout()
+    this.provisionTimeoutId = setTimeout(() => {
+      wx.hideLoading()
+      wx.showToast({
+        title: '配网超时',
+        icon: 'none'
+      })
+    }, PROVISION_TIMEOUT_MS)
+  },
+
+  clearProvisionTimeout() {
+    if (!this.provisionTimeoutId) {
+      return
+    }
+
+    clearTimeout(this.provisionTimeoutId)
+    this.provisionTimeoutId = null
   },
 
   bindPasswordInput(event) {
@@ -209,14 +272,8 @@ Page({
     })
   },
 
-  bindCustomDataInput(event) {
-    this.setData({
-      customData: event.detail.value
-    })
-  },
-
   bindProvisionedDevice() {
-    const deviceId = (this.data.connectedDeviceId || '').trim()
+    const deviceId = normalizeDeviceId(this.data.connectedDeviceId)
 
     if (!deviceId || this.data.bindingDevice) {
       return
@@ -231,74 +288,103 @@ Page({
       mask: true
     })
 
-    request({
-      url: BIND_DEVICE_URL,
-      method: 'POST',
-      withAuth: true,
-      header: {
-        'Content-Type': 'application/json'
-      },
-      data: {
-        deviceId
-      },
-      success: (response, responseData) => {
-        console.log('bind device after provision response:', response)
+    loginDevice(deviceId).then(
+      (token) => {
+        request({
+          url: BIND_DEVICE_URL,
+          method: 'POST',
+          token,
+          header: {
+            'Content-Type': 'application/json'
+          },
+          data: {
+            deviceId
+          },
+          success: (response, responseData) => {
+            console.log('bind device after provision response:', response)
 
-        wx.hideLoading()
-        this.setData({
-          bindingDevice: false
-        })
+            if (responseData.resultCode !== 0) {
+              wx.hideLoading()
+              this.setData({
+                bindingDevice: false
+              })
+              wx.showToast({
+                title: responseData.resultMsg || '绑定失败',
+                icon: 'none'
+              })
+              return
+            }
 
-        if (responseData.resultCode !== 0) {
-          wx.showToast({
-            title: responseData.resultMsg || '绑定失败',
-            icon: 'none'
-          })
-          return
-        }
+            saveHomeDevice(deviceId)
 
-        wx.showToast({
-          title: '绑定成功',
-          icon: 'success'
-        })
-
-        wx.navigateBack({
-          delta: 2,
-          fail: () => {
-            wx.reLaunch({
-              url: '/pages/index/index'
+            loginDevice(deviceId).then(
+              () => {
+                wx.hideLoading()
+                this.setData({
+                  bindingDevice: false
+                })
+                wx.showToast({
+                  title: '绑定成功',
+                  icon: 'success'
+                })
+                wx.navigateBack({
+                  delta: 2,
+                  fail: () => {
+                    wx.reLaunch({
+                      url: '/pages/index/index'
+                    })
+                  }
+                })
+              },
+              (refreshError) => {
+                console.error('refresh token after provision bind failed:', refreshError)
+                wx.hideLoading()
+                this.setData({
+                  bindingDevice: false
+                })
+                wx.showToast({
+                  title: '绑定成功，token刷新失败',
+                  icon: 'none'
+                })
+                wx.navigateBack({
+                  delta: 2,
+                  fail: () => {
+                    wx.reLaunch({
+                      url: '/pages/index/index'
+                    })
+                  }
+                })
+              }
+            )
+          },
+          fail: (error) => {
+            console.error('bind device after provision failed:', error)
+            wx.hideLoading()
+            this.setData({
+              bindingDevice: false
+            })
+            wx.showToast({
+              title: '绑定失败',
+              icon: 'none'
             })
           }
         })
       },
-      fail: (error) => {
-        console.error('bind device after provision failed:', error)
+      (error) => {
+        console.error('auth device failed after provision:', error)
         wx.hideLoading()
         this.setData({
           bindingDevice: false
         })
         wx.showToast({
-          title: '绑定失败',
+          title: '设备登录失败',
           icon: 'none'
         })
       }
-    })
+    )
   },
 
-  bindPickerChange(event) {
-    const index = event.detail.value
-    const ssid = this.data.array[index]
-    const password = wx.getStorageSync(ssid)
-
-    console.log('picker发送选择改变，携带值为', index)
-    console.log('ssid=>', ssid)
-    console.log('password=>', password)
-
-    this.setData({
-      index,
-      ssid,
-      isInitOK: true,
-      password: password || ''
-    })
+  refreshCurrentWifi() {
+    this.loadCurrentWifi()
   }
 })

@@ -1,45 +1,44 @@
 <view class="page-shell">
-  <view wx:if="{{!isLoggedIn}}" class="login-panel card">
-    <button class="login-button" loading="{{loggingIn}}" bindtap="handleLogin">{{loggingIn ? '登录中...' : '登录'}}</button>
+  <view class="brand-block">
+    <image class="brand-mark" src="../../images/logo.png" mode="aspectFit" />
+    <view class="brand-copy">
+      <text class="brand-title">AI硬件智能体</text>
+      <text class="brand-subtitle">创建你的AI智能助手</text>
+    </view>
   </view>
 
-  <block wx:else>
-    <view class="brand-block">
-      <image class="brand-mark" src="../../images/logo.png" mode="aspectFit" />
-      <view class="brand-copy">
-        <text class="brand-title">AI硬件智能体</text>
-        <text class="brand-subtitle">创建你的AI智能助手</text>
+  <view class="summary-bar">
+    <view class="summary-main">
+      <view class="summary-icon">
+        <view class="summary-icon-core"></view>
+    </view>
+      <text class="summary-title">{{title}}</text>
+    </view>
+    <text class="summary-count">已添加 {{devices.length}} 台设备</text>
+  </view>
+
+  <view wx:if="{{devices.length}}" class="device-list">
+    <view wx:for="{{devices}}" wx:key="id" class="device-card" data-device-id="{{item.id}}" bindtap="openDeviceDetail">
+      <view class="device-thumb"></view>
+      <view class="device-copy">
+        <text class="device-name">{{item.name}}</text>
+        <text class="device-id">ID：{{item.id}}</text>
       </view>
     </view>
+  </view>
 
-    <view class="summary-bar">
-      <view class="summary-main">
-        <view class="summary-icon">
-          <view class="summary-icon-core"></view>
-        </view>
-        <text class="summary-title">{{title}}</text>
-      </view>
-      <text class="summary-count">已添加 {{devices.length}} 台设备</text>
-    </view>
+  <view wx:else class="empty-state">
+    <text class="empty-title">暂无设备</text>
+    <text class="empty-copy">点击右下角按钮添加设备，首页仅展示最近一次添加的设备。</text>
+  </view>
 
-    <view class="device-list">
-      <view wx:for="{{devices}}" wx:key="id" class="device-card" data-device-id="{{item.id}}" bindtap="openDeviceDetail">
-        <view class="device-thumb"></view>
-        <view class="device-copy">
-          <text class="device-name">我的设备</text>
-          <text class="device-id">ID：{{item.id}}</text>
-        </view>
-      </view>
-    </view>
-
-    <button class="floating-add" bindtap="openAddDrawer">+</button>
-  </block>
+  <button class="floating-add" bindtap="openAddDrawer">+</button>
 </view>
 
-<view wx:if="{{isLoggedIn && drawerVisible}}" class="drawer-mask" bindtap="closeAddDrawer">
+<view wx:if="{{drawerVisible}}" class="drawer-mask" bindtap="closeAddDrawer">
   <view class="drawer-panel" catchtap="noop">
     <text class="drawer-title">添加设备</text>
-    <text class="drawer-subtitle">选择一种接入方式，实际添加能力将在后续版本提供。</text>
+    <text class="drawer-subtitle">选择一种接入方式，绑定成功后首页会显示当前添加的设备。</text>
     <button
       wx:for="{{addDeviceActions}}"
       wx:key="action"
@@ -52,7 +51,7 @@
   </view>
 </view>
 
-<view wx:if="{{isLoggedIn && bindModalVisible}}" class="drawer-mask" bindtap="closeBindModal">
+<view wx:if="{{bindModalVisible}}" class="drawer-mask" bindtap="closeBindModal">
   <view class="bind-modal" catchtap="noop">
     <text class="drawer-title">绑定设备</text>
     <text class="drawer-subtitle">请输入需要绑定的设备ID。</text>
