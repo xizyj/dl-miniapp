@@ -1,7 +1,6 @@
 const { buildApiUrl, request } = require('../../utils/http')
 const DEVICE_DETAIL_BASE_URL = buildApiUrl('/user_device/deviceInfo')
 const RESET_DEVICE_BASE_URL = buildApiUrl('/device_setting/reset')
-const UNBIND_DEVICE_URL = buildApiUrl('/appuser/bindDevice')
 const QUICK_ACTIONS = [
   {
     key: 'agent',
@@ -78,6 +77,8 @@ function extractVersion(shadow) {
 }
 
 Page({
+  shouldRefreshOnShow: false,
+
   data: {
     loading: true,
     errorMessage: '',
@@ -105,6 +106,25 @@ Page({
     }
 
     this.fetchDeviceDetail(deviceId)
+  },
+
+  onShow() {
+    if (!this.shouldRefreshOnShow) {
+      return
+    }
+
+    this.shouldRefreshOnShow = false
+
+    if (!this.data.deviceId) {
+      return
+    }
+
+    this.setData({
+      loading: true,
+      errorMessage: ''
+    })
+
+    this.fetchDeviceDetail(this.data.deviceId)
   },
 
   fetchDeviceDetail(deviceId) {
@@ -157,6 +177,7 @@ Page({
         }
 
         showToast('重置成功')
+        this.fetchDeviceDetail(deviceId)
       },
       fail: (error) => {
         console.error('reset device failed:', error)
@@ -165,37 +186,18 @@ Page({
     })
   },
 
-  unbindDevice() {
-    const { deviceId } = this.data
-
-    if (!deviceId) {
-      showToast('缺少设备ID')
-      return
-    }
-
-    request({
-      url: UNBIND_DEVICE_URL,
-      method: 'POST',
-      withAuth: true,
-      header: {
-        'Content-Type': 'application/json'
-      },
-      data: {
-        deviceId
-      },
-      success: (response, responseData) => {
-        console.log('unbind device response:', response)
-
-        if (responseData.resultCode !== 0) {
-          showToast(responseData.resultMsg || '解绑失败')
+  confirmResetDevice() {
+    wx.showModal({
+      title: '确认重置设备',
+      content: '重置后设备可能需要重新配网，是否继续？',
+      confirmText: '确认重置',
+      cancelText: '取消',
+      success: (result) => {
+        if (!result.confirm) {
           return
         }
 
-        showToast('解绑成功')
-      },
-      fail: (error) => {
-        console.error('unbind device failed:', error)
-        showToast(error && error.message ? error.message : '解绑失败')
+        this.resetDevice()
       }
     })
   },
@@ -225,12 +227,12 @@ Page({
     }
 
     if (key === 'reset') {
-      this.resetDevice()
+      this.confirmResetDevice()
       return
     }
 
     if (key === 'unbind') {
-      this.unbindDevice()
+      showToast('暂未开放')
       return
     }
 

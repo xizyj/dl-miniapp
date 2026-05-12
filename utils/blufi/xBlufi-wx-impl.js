@@ -37,7 +37,6 @@ let self = {
     characteristic_write_uuid: "0000FF01-0000-1000-8000-00805F9B34FB",
     characteristic_read_uuid: "0000FF02-0000-1000-8000-00805F9B34FB",
     useRawCredentialPayload: false,
-    customData: null,
     md5Key: 0,
   }
 }
@@ -60,14 +59,6 @@ function getSsids(str) {
     strs = str.split(":");
   for (var i = 0; i < strs.length; i++) {
     list.push(parseInt(strs[i], 16));
-  }
-  return list;
-}
-
-function getCharCodeat(str) {
-  var list = [];
-  for (var i = 0; i < str.length; i++) {
-    list.push(str.charCodeAt(i));
   }
   return list;
 }
@@ -308,59 +299,6 @@ function writeRawWifiCredentialPayload(deviceId, serviceId, characteristicId) {
     }
   })
 }
-
-function writeCutomsData(deviceId, serviceId, characteristicId, data) {
-  var obj = {},
-    frameControl = 0;
-  sequenceControl = parseInt(sequenceControl) + 1;
-  if (!util._isEmpty(data)) {
-    obj = util.isSubcontractor(data, self.data.isChecksum, sequenceControl, self.data.isEncrypt);
-    frameControl = util.getFrameCTRLValue(self.data.isEncrypt, self.data.isChecksum, util.DIRECTION_OUTPUT, false, obj.flag);
-  } else {
-    var ssidData = getCharCodeat(self.data.customData);
-    obj = util.isSubcontractor(ssidData, self.data.isChecksum, sequenceControl, self.data.isEncrypt);
-    frameControl = util.getFrameCTRLValue(self.data.isEncrypt, self.data.isChecksum, util.DIRECTION_OUTPUT, false, obj.flag);
-  }
-  var defaultData = encodeBlePayload(obj.lenData);
-  var value = util.writeData(util.PACKAGE_VALUE, util.SUBTYPE_CUSTOM_DATA, frameControl, sequenceControl, obj.len, defaultData);
-  var typedArray = new Uint8Array(value)
-  wx.writeBLECharacteristicValue({
-    deviceId: deviceId,
-    serviceId: serviceId,
-    characteristicId: characteristicId,
-    value: typedArray.buffer,
-    success: function (res) {
-      if (obj.flag) {
-        writeCutomsData(deviceId, serviceId, characteristicId, obj.laveData);
-      }
-    },
-    fail: function (res) {
-      //console.log(257);
-    }
-  })
-}
-
-
-function writeGetNearRouterSsid(deviceId, serviceId, characteristicId, data) {
-  sequenceControl = parseInt(sequenceControl) + 1;
-  var frameControl = util.getFrameCTRLValue(self.data.isEncrypt, false, util.DIRECTION_OUTPUT, false, false);
-  var value = util.writeData(self.data.PACKAGE_CONTROL_VALUE, util.SUBTYPE_WIFI_NEG, frameControl, sequenceControl, 0, null);
-  var typedArray = new Uint8Array(value)
-  wx.writeBLECharacteristicValue({
-    deviceId: deviceId,
-    serviceId: serviceId,
-    characteristicId: characteristicId,
-    value: typedArray.buffer,
-    success: function (res) {
-
-    },
-    fail: function (res) {
-
-    }
-  })
-}
-
-
 
 function writeWifiCredentialPayload(deviceId, serviceId, characteristicId, data) {
   var obj = {},
@@ -699,7 +637,6 @@ function init() {
         characteristic_read_uuid: "0000FF02-0000-1000-8000-00805F9B34FB",
         bleProfiles: getBleProfiles(),
         useRawCredentialPayload: false,
-        customData: null,
         md5Key: 0,
       }
     }
@@ -918,19 +855,6 @@ function init() {
                               }
 
                               break;
-                            case 19:
-                              let customData = [];
-                              for (var k = 0; k <= result.length; k++) {
-                                customData.push(String.fromCharCode(parseInt(result[k], 16)));
-                              }
-                              let obj = {
-                                'type': mDeviceEvent.XBLUFI_TYPE.TYPE_RECIEVE_CUSTON_DATA,
-                                'result': true,
-                                'data': customData.join('')
-                              }
-                              mDeviceEvent.notifyDeviceMsgEvent(obj);
-
-                              break;
                             case util.SUBTYPE_NEGOTIATION_NEG:
                               var arr = util.hexByInt(result.join(""));
                               var clientSecret = client.computeSecret(new Uint8Array(arr));
@@ -946,10 +870,6 @@ function init() {
                                   characteristicId
                                 }
                               });
-                              break;
-
-                            case 17:
-                              getList(result, result.length, 0);
                               break;
 
                             default:
@@ -1005,46 +925,6 @@ function init() {
     writeDeviceRouterInfoStart(self.data.deviceId, self.data.serviceId || self.data.service_uuid, self.data.uuid || self.data.characteristic_write_uuid, null);
   })
 
-
-  mDeviceEvent.listenSendCustomData(true, function (options) {
-    self.data.customData = options.customData
-    writeCutomsData(self.data.deviceId, self.data.serviceId || self.data.service_uuid, self.data.uuid || self.data.characteristic_write_uuid, null);
-  })
-
-  mDeviceEvent.listenSendGetNearRouterSsid(true, function (options) {
-    writeGetNearRouterSsid(self.data.deviceId, self.data.serviceId || self.data.service_uuid, self.data.uuid || self.data.characteristic_write_uuid, null);
-  })
-
-}
-
-function getList(arr, totalLength, curLength) {
-  // console.log(totalLength)
-  // console.log(arr)
-  var self = this;
-  if (arr.length > 0) {
-    var len = parseInt(arr[0], 16);
-    curLength += (1 + len);
-    if (len > 0 && curLength < totalLength) {
-      var rssi = 0, name = "";
-      let list = []
-      for (var i = 1; i <= len; i++) {
-        if (i == 1) {
-          rssi = parseInt(arr[i], 16);
-        } else {
-          list.push(parseInt(arr[i], 16))
-        }
-      }
-      name = decodeURIComponent(escape(String.fromCharCode(...list)))
-      let obj = {
-        'type': mDeviceEvent.XBLUFI_TYPE.TYPE_CONNECT_NEAR_ROUTER_LISTS,
-        'result': true,
-        'data': { "rssi": rssi, "SSID": name }
-      }
-      mDeviceEvent.notifyDeviceMsgEvent(obj);
-      arr = arr.splice(len + 1);
-      getList(arr, totalLength, curLength);
-    }
-  }
 }
 
 

@@ -14,9 +14,7 @@ let XBLUFI_TYPE = {
   TYPE_CONNECTED: '0',  //主动连接
   TYPE_GET_DEVICE_LISTS: '1', //发现设备列表回调
   TYPE_INIT_ESP32_RESULT: '2',
-  TYPE_RECIEVE_CUSTON_DATA: '3', //接收到自定义数据
   TYPE_CONNECT_ROUTER_RESULT: '4',
-  TYPE_CONNECT_NEAR_ROUTER_LISTS: '5',
 
 
   TYPE_GET_DEVICE_LISTS_START: ' 41', //发现设备列表回调开始
@@ -35,8 +33,6 @@ let OnFireEvent = {
   ENENT_ALL: '6',
 
   EVENT_NOFITY_SEND_ROUTER_SSID_PASSWORD: '50', //通知发送路由器的ssid和password
-  EVENT_NOFITY_SEND_CUSTON_DATA: '51', //通知发送自定义数据
-  EVENT_NOFITY_SEND_GET_ROUTER_SSID:"52",//获取周围的SSID
 
 }
 
@@ -129,26 +125,6 @@ function listenInitBleEsp32(isSetListener, funtion) {
 }
 
 /**
- * 获取模组周围的SSID
- * @param options NULL
- */
-function notifySendGetNearRouterSsid() {
-  mOnFire.fire(OnFireEvent.EVENT_NOFITY_SEND_GET_ROUTER_SSID, null);
-}
-/**
- * 获取模组周围的SSID
- * @param options 连接参数 {"isStart":true} 是否开始发现设备
- */
-function listenSendGetNearRouterSsid(isSetListener, funtion) {
-  if (isSetListener) {
-    mOnFire.on(OnFireEvent.EVENT_NOFITY_SEND_GET_ROUTER_SSID, funtion)
-  } else {
-    mOnFire.un(funtion)
-  }
-}
-
-
-/**
  * 发送要连接的路由器的ssid和密码
  * @param options 连接参数 {"deviceId":"设备的设备id","serverId":"服务id","characterId":"通道","ssid":"路由器名字","password":"密码"}
  */
@@ -166,28 +142,6 @@ function listenSendRouterSsidAndPassword(isSetListener, funtion) {
     mOnFire.un(funtion)
   }
 }
-
-
-/**
- * 发送自定义数据
- * @param options 连接参数 {"deviceId":"设备的设备id","serverId":"服务id","characterId":"通道","customData":"自定义数据""}
- */
-function notifySendCustomData(options) {
-  mOnFire.fire(OnFireEvent.EVENT_NOFITY_SEND_CUSTON_DATA, options);
-}
-
-/**
- * 发送自定义数据
- * @param options 连接参数 {"deviceId":"设备的设备id","serverId":"服务id","characterId":"通道","customData":"自定义数据""}
- */
-function listenSendCustomData(isSetListener, funtion) {
-  if (isSetListener) {
-    mOnFire.on(OnFireEvent.EVENT_NOFITY_SEND_CUSTON_DATA, funtion)
-  } else {
-    mOnFire.un(funtion)
-  }
-}
-
 
 
 /****************************** 对外  ***************************************/
@@ -212,13 +166,6 @@ module.exports = {
 
   notifySendRouterSsidAndPassword,
   listenSendRouterSsidAndPassword,
-
-  notifySendCustomData,
-  listenSendCustomData,
-
-
-  notifySendGetNearRouterSsid,
-  listenSendGetNearRouterSsid,
 
 
   initXBlufi,

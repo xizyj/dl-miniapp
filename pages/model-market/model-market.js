@@ -164,6 +164,19 @@ Page({
           title: '绑定成功',
           icon: 'success'
         })
+
+        setTimeout(() => {
+          const pages = getCurrentPages()
+          const previousPage = pages[pages.length - 2]
+
+          if (previousPage && typeof previousPage.fetchDeviceDetail === 'function') {
+            previousPage.shouldRefreshOnShow = true
+          }
+
+          wx.navigateBack({
+            delta: 1
+          })
+        }, 300)
       },
       fail: (error) => {
         console.error('bind model failed:', error)

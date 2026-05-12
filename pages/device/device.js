@@ -112,17 +112,6 @@ Page({
         }
         break
 
-      case xBlufi.XBLUFI_TYPE.TYPE_RECIEVE_CUSTON_DATA:
-        console.log('收到设备发来的自定义数据结果：', options.data)
-        showModal({
-          title: '收到自定义设备数据',
-          content: `【${options.data}】`
-        })
-        break
-
-      case xBlufi.XBLUFI_TYPE.TYPE_CONNECT_NEAR_ROUTER_LISTS:
-        break
-
       case xBlufi.XBLUFI_TYPE.TYPE_INIT_ESP32_RESULT:
         wx.hideLoading()
         console.log('初始化结果：', JSON.stringify(options))

@@ -183,6 +183,40 @@ Page({
     this.bindDevice(this.data.bindDeviceId)
   },
 
+  addScannedDevice(deviceId) {
+    const normalizedDeviceId = normalizeDeviceId(deviceId)
+
+    if (!normalizedDeviceId) {
+      showToast('未识别到设备ID')
+      return
+    }
+
+    if (this.data.bindingDevice) {
+      return
+    }
+
+    this.setData({
+      bindingDevice: true
+    })
+
+    loginDevice(normalizedDeviceId).then(
+      () => {
+        saveHomeDevice(normalizedDeviceId)
+        this.refreshDevices()
+        this.setData({
+          bindingDevice: false,
+          drawerVisible: false
+        })
+        showToast('添加成功', 'success')
+      },
+      (error) => {
+        console.error('auth device failed after scan:', error)
+        this.setData({ bindingDevice: false })
+        showToast('设备登录失败')
+      }
+    )
+  },
+
   startScanBind() {
     if (this.data.bindingDevice) {
       return
@@ -199,7 +233,7 @@ Page({
           return
         }
 
-        this.bindDevice(deviceId)
+        this.addScannedDevice(deviceId)
       },
       fail: (error) => {
         if (error && error.errMsg && error.errMsg.indexOf('cancel') !== -1) {

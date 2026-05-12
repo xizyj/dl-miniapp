@@ -3,3 +3,18 @@ page,.page{height:100%;}
 button{
   width: 75%;
 }
+
+.wifi-row {
+  display: flex;
+  align-items: center;
+}
+
+.wifi-row-text {
+  flex: 1;
+}
+
+.wifi-refresh-button {
+  width: 140rpx;
+  min-width: 140rpx;
+  margin: 0 0 0 24rpx;
+}

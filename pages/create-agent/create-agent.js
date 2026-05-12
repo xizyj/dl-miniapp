@@ -209,7 +209,17 @@ Page({
         }
 
         showToast('创建成功', 'success')
-        wx.navigateBack()
+
+        const pages = getCurrentPages()
+        const previousPage = pages[pages.length - 2]
+
+        if (previousPage && typeof previousPage.fetchDeviceDetail === 'function') {
+          previousPage.shouldRefreshOnShow = true
+        }
+
+        wx.navigateBack({
+          delta: 1
+        })
       },
       fail: (error) => {
         console.error('create agent failed:', error)

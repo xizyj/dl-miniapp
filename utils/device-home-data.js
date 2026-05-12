@@ -54,7 +54,7 @@ function saveHomeDevice(deviceInfo) {
 const addDeviceActions = [
   {
     action: 'scan',
-    label: '扫一扫配网'
+    label: '扫一扫'
   },
   {
     action: 'bluetooth',

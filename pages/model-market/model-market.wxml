@@ -1,18 +1,5 @@
 <view class="page-shell">
-  <view class="page-header">
-    <view class="page-header-spacer"></view>
-    <text class="page-title">模型市场</text>
-    <view class="page-header-actions">
-      <view class="page-header-dots">
-        <text class="header-dot header-dot-active"></text>
-        <text class="header-dot"></text>
-        <text class="header-dot"></text>
-      </view>
-      <text class="header-divider"></text>
-      <text class="header-short-line"></text>
-      <text class="header-ring"></text>
-    </view>
-  </view>
+
 
   <view class="search-panel">
     <view class="search-row">
