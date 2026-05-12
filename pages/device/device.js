@@ -1,9 +1,8 @@
 const xBlufi = require('../../utils/blufi/xBlufi.js')
 const { normalizeDeviceId } = require('../../utils/device-id')
 const { saveHomeDevice } = require('../../utils/device-home-data')
-const { buildApiUrl, loginDevice, request } = require('../../utils/http')
+const { loginDevice } = require('../../utils/http')
 
-const BIND_DEVICE_URL = buildApiUrl('/appuser/bindDevice')
 const PROVISION_TIMEOUT_MS = 20000
 
 function showModal(options) {
@@ -284,94 +283,32 @@ Page({
     })
 
     wx.showLoading({
-      title: '绑定设备中...',
+      title: '设备登录中...',
       mask: true
     })
 
     loginDevice(deviceId).then(
-      (token) => {
-        request({
-          url: BIND_DEVICE_URL,
-          method: 'POST',
-          token,
-          header: {
-            'Content-Type': 'application/json'
-          },
-          data: {
-            deviceId
-          },
-          success: (response, responseData) => {
-            console.log('bind device after provision response:', response)
-
-            if (responseData.resultCode !== 0) {
-              wx.hideLoading()
-              this.setData({
-                bindingDevice: false
-              })
-              wx.showToast({
-                title: responseData.resultMsg || '绑定失败',
-                icon: 'none'
-              })
-              return
-            }
-
-            saveHomeDevice(deviceId)
-
-            loginDevice(deviceId).then(
-              () => {
-                wx.hideLoading()
-                this.setData({
-                  bindingDevice: false
-                })
-                wx.showToast({
-                  title: '绑定成功',
-                  icon: 'success'
-                })
-                wx.navigateBack({
-                  delta: 2,
-                  fail: () => {
-                    wx.reLaunch({
-                      url: '/pages/index/index'
-                    })
-                  }
-                })
-              },
-              (refreshError) => {
-                console.error('refresh token after provision bind failed:', refreshError)
-                wx.hideLoading()
-                this.setData({
-                  bindingDevice: false
-                })
-                wx.showToast({
-                  title: '绑定成功，token刷新失败',
-                  icon: 'none'
-                })
-                wx.navigateBack({
-                  delta: 2,
-                  fail: () => {
-                    wx.reLaunch({
-                      url: '/pages/index/index'
-                    })
-                  }
-                })
-              }
-            )
-          },
-          fail: (error) => {
-            console.error('bind device after provision failed:', error)
-            wx.hideLoading()
-            this.setData({
-              bindingDevice: false
-            })
-            wx.showToast({
-              title: '绑定失败',
-              icon: 'none'
+      () => {
+        saveHomeDevice(deviceId)
+        wx.hideLoading()
+        this.setData({
+          bindingDevice: false
+        })
+        wx.showToast({
+          title: '配网成功',
+          icon: 'success'
+        })
+        wx.navigateBack({
+          delta: 2,
+          fail: () => {
+            wx.reLaunch({
+              url: '/pages/index/index'
             })
           }
         })
       },
       (error) => {
-        console.error('auth device failed after provision:', error)
+        console.error('device login failed after provision:', error)
         wx.hideLoading()
         this.setData({
           bindingDevice: false
