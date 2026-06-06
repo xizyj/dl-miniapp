@@ -6,13 +6,35 @@
     </view>
     <view class="weui-form__control-area">
       <view class="weui-cells__group weui-cells__group_form">
-        <view class="weui-cells__title">当前手机 Wi-Fi：{{ssid || '未获取到'}}</view>
+        <view class="weui-cells__title">选择 Wi-Fi 网络</view>
+        <view class="wifi-list-toolbar">
+          <text>{{wifiLoading ? '正在搜索附近 Wi-Fi...' : (wifiList.length ? '共 ' + wifiList.length + ' 个网络' : '暂未发现可用 Wi-Fi')}}</text>
+          <button class="wifi-refresh-button" size="mini" bindtap="refreshWifiList">刷新</button>
+        </view>
         <view class="weui-cells weui-cells_form">
-          <view class="weui-cell wifi-row">
-            <view class="weui-cell__bd wifi-row-text">
-              <text>{{wifiLoading ? '正在读取当前 Wi-Fi...' : (ssid || '请确认手机已连接 Wi-Fi，并点击刷新')}}</text>
+          <scroll-view wx:if="{{wifiList.length}}" scroll-y class="wifi-list">
+            <view
+              wx:for="{{wifiList}}"
+              wx:key="SSID"
+              class="wifi-item {{ssid === item.SSID ? 'wifi-item-selected' : ''}}"
+              data-ssid="{{item.SSID}}"
+              bindtap="selectWifi"
+            >
+              <view class="wifi-item-main">
+                <text class="wifi-item-name">{{item.SSID}}</text>
+                <text wx:if="{{item.connected}}" class="wifi-item-tag">当前连接</text>
+              </view>
+              <text class="wifi-item-signal">信号 {{item.signalStrength}}</text>
             </view>
-            <button class="wifi-refresh-button" size="mini" bindtap="refreshCurrentWifi">刷新</button>
+          </scroll-view>
+          <view wx:else class="wifi-empty">
+            <text>{{wifiLoading ? '搜索中，请稍候...' : '请点击刷新重新搜索 Wi-Fi'}}</text>
+          </view>
+          <view class="weui-cell">
+            <view class="weui-cell__hd"><label class="weui-label">已选：</label></view>
+            <view class="weui-cell__bd">
+              <text class="wifi-selected-text">{{ssid || '未选择'}}</text>
+            </view>
           </view>
           <view class="weui-cell">
             <view class="weui-cell__hd"><label class="weui-label">密码：</label></view>
@@ -30,7 +52,7 @@
       </label>
     </view>
     <view class="weui-form__opr-area">
-      <button bindtap="OnClickStart" disabled="{{!isInitOK || wifiLoading}}" type="primary">{{isInitOK ? '开始配网' : '设备初始化失败'}}</button>
+      <button bindtap="OnClickStart" disabled="{{!isInitOK || wifiLoading || !ssid}}" type="primary">{{isInitOK ? '开始配网' : '设备初始化失败'}}</button>
     </view>
 
   </view>

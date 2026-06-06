@@ -1,11 +1,13 @@
 const app = getApp()
 var xBlufi = require("../../utils/blufi/xBlufi.js");
+var util = require("../../utils/blufi/util.js");
 let _this = null;
 
 Page({
   data: {
     devicesList: [],
     searching: false,
+    hasSearched: false,
   },
   onLoad: function(options) {
     _this = this;
@@ -25,7 +27,7 @@ Page({
       case xBlufi.XBLUFI_TYPE.TYPE_GET_DEVICE_LISTS:
         if (options.result)
           _this.setData({
-            devicesList: options.data
+            devicesList: util.filterDevice(options.data, 'MYF-|DL-')
           });
         break;
 
@@ -61,7 +63,9 @@ Page({
         } else {
           //蓝牙搜索开始
           _this.setData({
-            searching: true
+            searching: true,
+            hasSearched: true,
+            devicesList: []
           });
         }
         break;

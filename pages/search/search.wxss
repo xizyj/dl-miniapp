@@ -20,3 +20,20 @@ page {
 .list-item:last-child {
   border-style: none;
 }
+
+.empty-state {
+  width: 690rpx;
+  padding: 80rpx 0;
+  text-align: center;
+  color: #888;
+  font-size: 30rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.empty-state-sub {
+  font-size: 24rpx;
+  color: #aaa;
+}

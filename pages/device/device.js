@@ -4,11 +4,57 @@ const { saveHomeDevice } = require('../../utils/device-home-data')
 const { loginDevice } = require('../../utils/http')
 
 const PROVISION_TIMEOUT_MS = 20000
+const WIFI_LIST_LOADING_TIMEOUT_MS = 15000
 
 function showModal(options) {
   wx.showModal({
     showCancel: false,
     ...options
+  })
+}
+
+function getCachedPassword(ssid) {
+  if (!ssid) {
+    return ''
+  }
+
+  try {
+    return wx.getStorageSync(ssid) || ''
+  } catch (error) {
+    return ''
+  }
+}
+
+function normalizeWifiList(rawList, connectedSsid) {
+  const map = new Map()
+
+  ;(rawList || []).forEach((wifi) => {
+    const SSID = typeof wifi.SSID === 'string' ? wifi.SSID.trim() : ''
+    if (!SSID) {
+      return
+    }
+
+    const signalStrength = typeof wifi.signalStrength === 'number' ? wifi.signalStrength : 0
+    const existing = map.get(SSID)
+
+    if (!existing || signalStrength > existing.signalStrength) {
+      map.set(SSID, {
+        SSID,
+        signalStrength,
+        secure: !!wifi.secure,
+        connected: SSID === connectedSsid
+      })
+    } else if (SSID === connectedSsid) {
+      existing.connected = true
+    }
+  })
+
+  return Array.from(map.values()).sort((left, right) => {
+    if (left.connected !== right.connected) {
+      return left.connected ? -1 : 1
+    }
+
+    return right.signalStrength - left.signalStrength
   })
 }
 
@@ -22,7 +68,9 @@ Page({
     isInitOK: false,
     password: '',
     bindingDevice: false,
-    wifiLoading: false
+    wifiLoading: false,
+    wifiList: [],
+    connectedWifiSsid: ''
   },
 
   onLoad(options) {
@@ -32,6 +80,8 @@ Page({
       name,
       connectedDeviceId: deviceId
     })
+
+    this.bindWifiListListener()
 
     // Register BLE listeners before triggering device initialization.
     xBlufi.listenDeviceMsgEvent(true, this.funListenDeviceMsgEvent)
@@ -43,15 +93,20 @@ Page({
       title: '设备初始化中'
     })
 
-    this.loadCurrentWifi()
+    this.loadWifiList()
   },
 
   onShow() {
-    this.loadCurrentWifi()
+    if (this.hasShownOnce) {
+      this.loadWifiList()
+    }
+    this.hasShownOnce = true
   },
 
   onUnload() {
     this.clearProvisionTimeout()
+    this.clearWifiListLoadingTimeout()
+    this.unbindWifiListListener()
     console.log('unload')
 
     xBlufi.notifyConnectBle({
@@ -121,7 +176,7 @@ Page({
           this.setData({
             isInitOK: true
           })
-          this.loadCurrentWifi()
+          this.loadWifiList()
         } else {
           console.log('初始化失败')
           this.setData({
@@ -156,26 +211,73 @@ Page({
     }
   },
 
-  loadCurrentWifi() {
-    if (typeof wx.startWifi !== 'function' || typeof wx.getConnectedWifi !== 'function') {
+  bindWifiListListener() {
+    if (this.wifiListListenerBound) {
+      return
+    }
+
+    this.wifiListListenerBound = true
+    this.wifiListListener = (result) => {
+      this.clearWifiListLoadingTimeout()
+
+      const connectedSsid = this.data.connectedWifiSsid
+      const wifiList = normalizeWifiList(result.wifiList, connectedSsid)
+      let nextSsid = this.data.ssid
+
+      if (!nextSsid || !wifiList.some((item) => item.SSID === nextSsid)) {
+        const connectedItem = wifiList.find((item) => item.connected)
+        nextSsid = connectedItem ? connectedItem.SSID : (wifiList[0] ? wifiList[0].SSID : '')
+      }
+
+      this.setData({
+        wifiList,
+        wifiLoading: false,
+        ssid: nextSsid,
+        password: nextSsid ? getCachedPassword(nextSsid) : this.data.password
+      })
+    }
+
+    wx.onGetWifiList(this.wifiListListener)
+  },
+
+  unbindWifiListListener() {
+    if (!this.wifiListListenerBound || !this.wifiListListener) {
+      return
+    }
+
+    wx.offGetWifiList(this.wifiListListener)
+    this.wifiListListenerBound = false
+    this.wifiListListener = null
+  },
+
+  loadWifiList() {
+    if (typeof wx.startWifi !== 'function') {
       return
     }
 
     this.setData({
       wifiLoading: true
     })
+    this.startWifiListLoadingTimeout()
 
     wx.startWifi({
       success: () => {
-        this.readCurrentWifi()
+        this.ensureLocationPermission()
+          .finally(() => {
+            this.readConnectedWifiThenScan()
+          })
       },
       fail: (error) => {
         if (error && error.errMsg && error.errMsg.indexOf('already started') !== -1) {
-          this.readCurrentWifi()
+          this.ensureLocationPermission()
+            .finally(() => {
+              this.readConnectedWifiThenScan()
+            })
           return
         }
 
         console.error('start wifi failed:', error)
+        this.clearWifiListLoadingTimeout()
         this.setData({
           wifiLoading: false
         })
@@ -183,33 +285,133 @@ Page({
     })
   },
 
-  readCurrentWifi() {
+  ensureLocationPermission() {
+    return new Promise((resolve) => {
+      if (typeof wx.getSetting !== 'function' || typeof wx.authorize !== 'function') {
+        resolve()
+        return
+      }
+
+      wx.getSetting({
+        success: (result) => {
+          if (result.authSetting['scope.userLocation']) {
+            resolve()
+            return
+          }
+
+          wx.authorize({
+            scope: 'scope.userLocation',
+            complete: resolve
+          })
+        },
+        fail: () => {
+          resolve()
+        }
+      })
+    })
+  },
+
+  readConnectedWifiThenScan() {
+    if (typeof wx.getConnectedWifi !== 'function') {
+      this.requestWifiList()
+      return
+    }
+
     wx.getConnectedWifi({
       success: (result) => {
         const wifi = result && result.wifi ? result.wifi : {}
-        const ssid = typeof wifi.SSID === 'string' ? wifi.SSID.trim() : ''
-        const cachedPassword = ssid ? wx.getStorageSync(ssid) : ''
+        const connectedSsid = typeof wifi.SSID === 'string' ? wifi.SSID.trim() : ''
 
         this.setData({
-          ssid,
-          password: cachedPassword || this.data.password,
-          wifiLoading: false
+          connectedWifiSsid: connectedSsid
         })
+
+        if (connectedSsid && !this.data.ssid) {
+          this.setData({
+            ssid: connectedSsid,
+            password: getCachedPassword(connectedSsid)
+          })
+        }
+
+        this.requestWifiList()
       },
       fail: (error) => {
         console.error('get connected wifi failed:', error)
-        this.setData({
-          wifiLoading: false,
-          ssid: ''
-        })
+        this.requestWifiList()
       }
     })
+  },
+
+  requestWifiList() {
+    if (typeof wx.getWifiList !== 'function') {
+      this.clearWifiListLoadingTimeout()
+      this.setData({
+        wifiLoading: false
+      })
+      return
+    }
+
+    wx.getWifiList({
+      success: () => {},
+      fail: (error) => {
+        console.error('get wifi list failed:', error)
+        this.clearWifiListLoadingTimeout()
+        this.setData({
+          wifiLoading: false
+        })
+
+        const errMsg = error && error.errMsg ? error.errMsg : ''
+        if (errMsg.indexOf('iOS') !== -1 || errMsg.indexOf('ios') !== -1) {
+          wx.showModal({
+            title: '提示',
+            content: '请在系统设置中进入 Wi-Fi 页面后再返回小程序，以便获取可用 Wi-Fi 列表',
+            showCancel: false
+          })
+        }
+      }
+    })
+  },
+
+  selectWifi(event) {
+    const ssid = event.currentTarget.dataset.ssid
+    if (!ssid || ssid === this.data.ssid) {
+      return
+    }
+
+    this.setData({
+      ssid,
+      password: getCachedPassword(ssid)
+    })
+  },
+
+  refreshWifiList() {
+    this.loadWifiList()
+  },
+
+  startWifiListLoadingTimeout() {
+    this.clearWifiListLoadingTimeout()
+    this.wifiListLoadingTimeoutId = setTimeout(() => {
+      if (this.data.wifiLoading) {
+        this.setData({
+          wifiLoading: false
+        })
+      }
+    }, WIFI_LIST_LOADING_TIMEOUT_MS)
+  },
+
+  clearWifiListLoadingTimeout() {
+    if (!this.wifiListLoadingTimeoutId) {
+      return
+    }
+
+    clearTimeout(this.wifiListLoadingTimeoutId)
+    this.wifiListLoadingTimeoutId = null
   },
 
   OnClickStart() {
     if (!this.data.ssid) {
       wx.showToast({
-        title: 'SSID不能为空',
+        title: '请选择 Wi-Fi',
         icon: 'none'
       })
       return
@@ -308,9 +510,5 @@ Page({
         })
       }
     )
-  },
-
-  refreshCurrentWifi() {
-    this.loadCurrentWifi()
   }
 })

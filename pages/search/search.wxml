@@ -1,5 +1,5 @@
 <view class="container">
-  <scroll-view scroll-y style="width:690rpx;height:{{list_height}}rpx">
+  <scroll-view wx:if="{{devicesList.length}}" scroll-y style="width:690rpx;height:{{list_height}}rpx">
     <block wx:for="{{devicesList}}" wx:key="deviceId">
       <view class="list-item" id="{{item.deviceId}}" bindtap="Connect">
         <view style="display:flex;flex-direction:column;width:80%">
@@ -11,4 +11,8 @@
       </view>
     </block>
   </scroll-view>
+  <view wx:elif="{{hasSearched}}" class="empty-state">
+    <text>没有搜索到设备</text>
+    <text wx:if="{{searching}}" class="empty-state-sub">正在继续搜索...</text>
+  </view>
 </view>

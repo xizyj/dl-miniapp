@@ -1,12 +1,14 @@
 const { buildApiUrl, request } = require('../../utils/http')
 const DEVICE_DETAIL_BASE_URL = buildApiUrl('/user_device/deviceInfo')
 const RESET_DEVICE_BASE_URL = buildApiUrl('/device_setting/reset')
+const CREATE_AGENT_VISIBLE = false
 const QUICK_ACTIONS = [
   {
     key: 'agent',
     iconText: 'AI',
     iconClass: 'icon-agent',
-    label: '创建智能体'
+    label: '创建智能体',
+    hidden: !CREATE_AGENT_VISIBLE
   },
   {
     key: 'history',
@@ -87,7 +89,7 @@ Page({
     model: '',
     modelPrefix: '',
     version: '',
-    quickActions: QUICK_ACTIONS
+    quickActions: QUICK_ACTIONS.filter((action) => !action.hidden)
   },
 
   onLoad(options) {

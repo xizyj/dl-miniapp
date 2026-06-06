@@ -4,17 +4,72 @@ button{
   width: 75%;
 }
 
-.wifi-row {
+.wifi-list-toolbar {
   display: flex;
   align-items: center;
-}
-
-.wifi-row-text {
-  flex: 1;
+  justify-content: space-between;
+  padding: 0 32rpx 16rpx;
+  font-size: 26rpx;
+  color: #666;
 }
 
 .wifi-refresh-button {
   width: 140rpx;
   min-width: 140rpx;
-  margin: 0 0 0 24rpx;
+  margin: 0;
+}
+
+.wifi-list {
+  max-height: 480rpx;
+}
+
+.wifi-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx 32rpx;
+  border-bottom: 1rpx solid rgba(0, 0, 0, 0.06);
+}
+
+.wifi-item-selected {
+  background: rgba(7, 193, 96, 0.08);
+}
+
+.wifi-item-main {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.wifi-item-name {
+  font-size: 30rpx;
+  word-break: break-all;
+}
+
+.wifi-item-tag {
+  flex-shrink: 0;
+  margin-left: 16rpx;
+  font-size: 22rpx;
+  color: #07c160;
+}
+
+.wifi-item-signal {
+  flex-shrink: 0;
+  margin-left: 24rpx;
+  font-size: 24rpx;
+  color: #888;
+}
+
+.wifi-empty {
+  padding: 32rpx;
+  text-align: center;
+  color: #888;
+  font-size: 28rpx;
+}
+
+.wifi-selected-text {
+  font-size: 30rpx;
+  color: #333;
+  word-break: break-all;
 }
