@@ -1,6 +1,8 @@
 var mOnFire = require("other/onfire.js");
 var $wxBlufiImpl = require('xBlufi-wx-impl.js');
 
+let isWeChatBlufiInitialized = false;
+
 // 0表示阿里支付宝小程序 1表示微信小程序
 let XMQTT_SYSTEM = {
   Alis: 0,
@@ -45,7 +47,12 @@ function initXBlufi(type) {
     case XMQTT_SYSTEM.Alis:
       break;
     case XMQTT_SYSTEM.WeChat:
+      if (isWeChatBlufiInitialized) {
+        return;
+      }
+
       $wxBlufiImpl.init();
+      isWeChatBlufiInitialized = true;
       break;
   }
 }
