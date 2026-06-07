@@ -1,115 +1,162 @@
+# AI 硬件智能体 · 微信小程序
 
-<p align="center">
-  <!-- <a href="http://doc.mini.7yue.pro/"> -->
-    <img
-      class="QR-img" src="http://qinniu.xuhongv.com/gh_57026554c41a_258.jpg">
-  <!-- </a> -->
-</p>
+面向 MYF / DL 系列 AI 硬件设备的微信小程序，提供设备添加、蓝牙配网、设备管理与模型配置等能力。
 
-<div align="center"> <span class="logo" > BlufiEsp32WeChat </span> </div>
+## 功能概览
 
-<div class="row" />
-<div align="center">
-  <span class="desc" >让微信小程序也可以配网设备</span> 
-</div>
+| 模块 | 说明 |
+| --- | --- |
+| 首页 | 展示已添加设备，支持扫一扫、蓝牙配网、手动绑定设备 |
+| 蓝牙搜索 | 扫描并筛选 `MYF-`、`DL-` 前缀设备，连接后进入配网流程 |
+| 蓝牙配网 | 基于 BLUFI 协议，为设备配置 Wi-Fi 并自动登录绑定 |
+| 设备详情 | 查看设备模型信息，支持历史对话、模型市场、重置设备等操作 |
+| 历史对话 | 分页查看设备聊天记录 |
+| 模型市场 | 浏览并绑定 GPT 模型到设备 |
+| 创建智能体 | 已实现，当前默认隐藏入口（`CREATE_AGENT_VISIBLE = false`） |
 
+## 技术栈
 
-## 维护日志，版本修订；
+- 微信小程序原生开发（WXML / WXSS / JS）
+- 蓝牙配网：BLUFI 协议（`utils/blufi/`）
+- 后端 API：`https://aigo.8ms.xyz/api`
+- 本地存储：设备列表、认证 Token、Wi-Fi 密码缓存
 
-|修改时间|更新日志|
-|----|----|
-|2019.5.17|初次拟稿，完成配网，暂不开放|
-|2019.11.30|首次开源|
-|2019.12.4|去除全局配置文件，增加对外使用文档|
-|2022.12.20|增加MTU设置|
-|2022.12.29|修改为获取模组周围SSID|
-
-## 一、简介
-
-BlufiEsp32WeChat 是基于 **微信小程序蓝牙配网设备** 实现的开源仓库，致力开源国内互联网。
-
-周所周知，目前市面上很多都是基于原生app做的配网，而在小程序实现和开源是极少的。本人参考官网示范，做了一个蓝牙配网demo，仅仅适合esp32。
-
-
-## 二、如何集成
-
-- 1.首先把 《blufi》 这个配网核心库所需文件夹放在你的工程里面；
-- 2.为了方便，直接把 《images》下面的图片复制到自己到工程里面，以及把界面《bleConnect》也复制到自己到工程里面去；
-- 3.蓝牙搜索附近设备展示列表，自行处理；最后要传给界面《bleConnect》到参数只有四个：
-
-|参数|含义|
-|----|----|
-|deviceId|要连接的蓝牙设备的deviceId|
-|ssid|要连接的路由器的名字|
-|password|要连接的路由器的密码|
-|callBackUri|自定义配网回调结果的界面（比如 /pages/index/index ）|
-
-- 4.比如这样：
+## 目录结构
 
 ```
-wx.navigateTo({
-  url: '/pages/blueConnect/index?deviceId=123456&ssid=TP-xx&password=12345678&callBackUri=/pages/index/index"
-  })
-```
-- 5.其中，当配网不管成功与否，都会带参数跳转到 callBackUri 这个定义的页面；参数名为 ```blufiResult``` 如下：
-
-|参数|含义|
-|----|----|
-|true|配网成功|
-|false|配网失败|
-
-- 6.比如这样处理：
-
-```
-    //生命周期函数--监听页面加载 
-    onLoad: function (options) {
-        var that = this;
-        if (options.blufiResult){
-          var result = options.blufiResult === 'ok' ? "配网成功" : "配网失败";
-          wx.showToast({
-            title: result,
-            icon: 'none',
-            duration: 2000
-          });
-        }
-     }
+mini-app/
+├── app.js / app.json / app.wxss    # 小程序入口与全局配置
+├── pages/
+│   ├── index/                      # 首页 · 设备列表与添加入口
+│   ├── search/                     # 蓝牙设备搜索
+│   ├── device/                     # 蓝牙配网 · Wi-Fi 选择与提交
+│   ├── device-detail/              # 设备详情与快捷功能
+│   ├── chat-history/               # 历史对话
+│   ├── model-market/               # 模型市场
+│   └── create-agent/               # 创建智能体（暂隐藏）
+├── utils/
+│   ├── blufi/                      # BLUFI 配网核心库
+│   ├── http.js                     # API 请求与设备登录
+│   ├── device-id.js                # 设备 ID 规范化（MYF- 前缀）
+│   └── device-home-data.js         # 首页设备本地存储
+├── images/                         # 静态图片资源
+└── scripts/validate-project.mjs    # 工程结构校验脚本
 ```
 
-## 三、本人开源 微信物联网控制 一览表
+## 快速开始
 
-|开源项目|地址|开源时间|
-|----|----|----|
-|微信小程序连接mqtt服务器，控制esp8266智能硬件|https://github.com/xuhongv/WeChatMiniEsp8266|2018.11|
-|微信公众号airkiss配网以及近场发现在esp8266 rtos3.1 的实现|https://github.com/xuhongv/xLibEsp8266Rtos3.1AirKiss|2019.3|
-|微信公众号airkiss配网以及近场发现在esp32 esp-idf 的实现|https://github.com/xuhongv/xLibEsp32IdfAirKiss|2019.9|
-|微信小程序控制esp8266实现七彩效果项目源码| https://github.com/xuhongv/WCMiniColorSetForEsp8266|2019.9|
-|微信小程序蓝牙配网blufi实现在esp32源码| https://github.com/xuhongv/BlufiEsp32WeChat|2019.11|
-|微信小程序蓝牙ble控制esp32七彩灯效果| https://blog.csdn.net/xh870189248/article/details/101849759|2019.10|
-|可商用的事件分发的微信小程序mqtt断线重连框架|https://blog.csdn.net/xh870189248/article/details/88718302|2019.2|
-|微信小程序以 websocket 连接阿里云IOT物联网平台mqtt服务器|https://blog.csdn.net/xh870189248/article/details/91490697|2019.6|
-|微信公众号网页实现连接mqtt服务器|https://blog.csdn.net/xh870189248/article/details/100738444|2019.9|
+### 环境要求
 
+- [微信开发者工具](https://developers.weixin.qq.com/miniprogram/dev/devtools/download.html)
+- 基础库建议 `3.x`（当前工程配置为 `3.15.1`）
+- 真机调试（蓝牙、Wi-Fi 扫描、扫码等功能需使用真机）
 
-## 四、讨论交流
+### 本地运行
 
-<table>
-  <tbody>
-    <tr >
-      <td align="center" valign="middle" style="border-style:none">
-       <img class="QR-img" height="260" width="260" src="https://aithinker-static.oss-cn-shenzhen.aliyuncs.com/bbs/important/qq_group.png">
-        <p style="font-size:12px;">QQ群号：434878850</p>
-      </td>
-      <td align="center" valign="middle" style="border-style:none">
-        <img class="QR-img" height="260" width="260" src="https://aithinker-static.oss-cn-shenzhen.aliyuncs.com/bbs/important/wechat_account.jpg">
-        <p style="font-size:12px;">本人微信公众号：徐宏blog</p>
-      </td>
-      <td align="center" valign="middle" style="border-style:none">
-        <img class="QR-img" height="260" width="260" src="https://aithinker-static.oss-cn-shenzhen.aliyuncs.com/bbs/important/wechat_me.jpg">
-        <p style="font-size:12px;">私人工作微信，添加标明来意</p>
-      </td>
-    </tr>
-  </tbody>
-</table>
+1. 克隆仓库到本地
+2. 使用微信开发者工具打开项目根目录
+3. 在开发者工具中填写自己的 AppID（或使用测试号）
+4. 编译并在真机上预览调试
 
+```bash
+npm run check   # 校验关键文件是否齐全
+npm start       # 提示使用微信开发者工具打开
+```
 
+## 主要流程
 
+### 添加设备
+
+首页点击右下角 **+** 按钮，可选择：
+
+1. **扫一扫**：扫描设备二维码，自动识别 `deviceId` 并登录绑定
+2. **蓝牙配网**：搜索 MYF / DL 设备 → 蓝牙连接 → 选择 Wi-Fi → 提交配网 → 自动绑定
+3. **绑定设备**：手动输入设备 ID 完成绑定
+
+### 蓝牙配网
+
+```
+首页 → 蓝牙配网 → 搜索设备 → 连接设备 → 选择 Wi-Fi → 输入密码 → 开始配网
+```
+
+- 仅展示名称以 `MYF-` 或 `DL-` 开头的蓝牙设备
+- 未搜索到设备时显示「没有搜索到设备」
+- 支持扫描附近 Wi-Fi 列表，不限于手机当前连接的 Wi-Fi
+- 配网成功后自动调用设备登录接口并保存到首页
+
+### 设备管理
+
+进入设备详情后可使用：
+
+- **历史对话**：查看设备聊天记录
+- **模型市场**：为设备绑定模型
+- **重置设备**：远程重置，重置后可能需要重新配网
+- **创建智能体**：代码已保留，修改 `pages/device-detail/device-detail.js` 中 `CREATE_AGENT_VISIBLE = true` 即可恢复入口
+
+## 配置说明
+
+### API 地址
+
+后端地址定义在 `utils/http.js`：
+
+```js
+const API_BASE_URL = 'https://aigo.8ms.xyz/api'
+```
+
+如需切换环境，修改该常量即可。
+
+### 设备 ID 规范
+
+`utils/device-id.js` 会将设备 ID 统一规范为 `MYF-` 前缀格式，例如：
+
+- 输入 `00011C00D5AD` → `MYF-00011C00D5AD`
+- 输入 `MYF-00011C00D5AD` → 保持不变
+
+### 权限声明
+
+`app.json` 中已声明以下权限，用于 Wi-Fi 列表扫描：
+
+- `scope.userLocation`：Android 平台扫描附近 Wi-Fi 时需要
+- `requiredPrivateInfos: ["getLocation"]`：隐私合规配置
+
+蓝牙相关能力需在小程序后台开通，并在真机上授权蓝牙权限。
+
+## 开发说明
+
+### BLUFI 配网库
+
+`utils/blufi/` 目录封装了微信小程序端的 BLUFI 蓝牙配网能力，核心文件：
+
+| 文件 | 作用 |
+| --- | --- |
+| `xBlufi.js` | 对外 API 与事件类型定义 |
+| `xBlufi-wx-impl.js` | 微信蓝牙 API 实现 |
+| `util.js` | 协议组包、设备名过滤等工具函数 |
+
+页面通过监听 `xBlufi` 事件驱动搜索、连接、初始化与配网流程。
+
+### 本地存储 Key
+
+| Key | 用途 |
+| --- | --- |
+| `homeDevice` | 首页展示的设备信息 |
+| `authToken` | 设备认证 Token |
+| `authDeviceId` | 当前认证绑定的设备 ID |
+| `{ssid}` | 各 Wi-Fi 的历史密码缓存 |
+
+### 隐藏功能开关
+
+| 开关 | 位置 | 默认值 |
+| --- | --- | --- |
+| `CREATE_AGENT_VISIBLE` | `pages/device-detail/device-detail.js` | `false` |
+
+## 注意事项
+
+1. **真机调试**：蓝牙配网、Wi-Fi 扫描、扫码等功能无法在模拟器中完整验证。
+2. **iOS Wi-Fi 列表**：若扫描结果为空，需按提示进入系统「设置 → Wi-Fi」后再返回小程序刷新列表。
+3. **设备配网模式**：设备需进入 BLUFI 配网状态；若设备暴露业务服务 `FD5C` 而非 BLUFI 服务，配网会失败并给出相应提示。
+4. **project.config.json**：该文件已被 `.gitignore` 忽略，首次导入项目时由微信开发者工具自动生成。
+
+## 致谢
+
+蓝牙配网能力基于开源项目 [BlufiEsp32WeChat](https://github.com/xuhongv/BlufiEsp32WeChat) 的 BLUFI 实现演进而来，在此向原作者表示感谢。
