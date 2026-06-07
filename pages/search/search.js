@@ -27,7 +27,7 @@ Page({
       case xBlufi.XBLUFI_TYPE.TYPE_GET_DEVICE_LISTS:
         if (options.result)
           _this.setData({
-            devicesList: util.filterDevice(options.data, 'MYF-|DL-')
+            devicesList: util.filterDevice(options.data, 'DL-')
           });
         break;
 

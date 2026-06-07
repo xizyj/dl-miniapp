@@ -1,7 +1,7 @@
 const { buildApiUrl, request } = require('../../utils/http')
 
 const CHAT_HISTORY_URL = buildApiUrl('/chatLog/page')
-const DEFAULT_CREATE_USER = 'MYF-00011C00D5AD'
+const DEFAULT_CREATE_USER = 'DL-00011C00D5AD'
 const PAGE_SIZE = 10
 
 function getStringValue(value) {
