@@ -2,6 +2,7 @@ const TOKEN_STORAGE_KEY = 'authToken'
 const AUTH_DEVICE_ID_STORAGE_KEY = 'authDeviceId'
 const API_BASE_URL = 'https://aigo.8ms.xyz/api'
 const AUTH_DEVICE_URL = `${API_BASE_URL}/auth/device`
+const { toAuthApiDeviceId } = require('./device-id')
 
 let pendingTokenPromise = null
 let pendingTokenDeviceId = ''
@@ -83,7 +84,7 @@ function ensureAuthToken(options = {}) {
         'Content-Type': 'application/json'
       },
       data: {
-        deviceId: resolvedDeviceId
+        deviceId: toAuthApiDeviceId(resolvedDeviceId)
       },
       success: (response) => {
         const token = extractToken(response)

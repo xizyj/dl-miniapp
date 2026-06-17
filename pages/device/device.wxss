@@ -1,5 +1,13 @@
 page,.page{height:100%;}
 
+.page .weui-form {
+  padding-top: 16rpx;
+}
+
+.page .weui-form__control-area {
+  margin-top: 16rpx;
+}
+
 button{
   width: 75%;
 }

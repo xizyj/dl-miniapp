@@ -1,4 +1,5 @@
 const DEVICE_ID_PREFIX = 'DL-'
+const API_DEVICE_ID_PREFIX = 'MYF-'
 
 function normalizeDeviceId(deviceId) {
   const rawDeviceId = typeof deviceId === 'string' ? deviceId.trim().toUpperCase() : ''
@@ -24,7 +25,23 @@ function normalizeDeviceId(deviceId) {
   return `${DEVICE_ID_PREFIX}${compactDeviceId}`
 }
 
+function toAuthApiDeviceId(deviceId) {
+  const normalized = normalizeDeviceId(deviceId)
+
+  if (!normalized) {
+    return ''
+  }
+
+  if (normalized.startsWith(DEVICE_ID_PREFIX)) {
+    return `${API_DEVICE_ID_PREFIX}${normalized.slice(DEVICE_ID_PREFIX.length)}`
+  }
+
+  return normalized
+}
+
 module.exports = {
+  API_DEVICE_ID_PREFIX,
   DEVICE_ID_PREFIX,
-  normalizeDeviceId
+  normalizeDeviceId,
+  toAuthApiDeviceId
 }
