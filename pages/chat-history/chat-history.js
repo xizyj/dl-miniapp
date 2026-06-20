@@ -1,4 +1,5 @@
-const { buildApiUrl, request } = require('../../utils/http')
+const { buildApiUrl, encodeApiDeviceId, request } = require('../../utils/http')
+const { normalizeDeviceId } = require('../../utils/device-id')
 
 const CHAT_HISTORY_URL = buildApiUrl('/chatLog/page')
 const DEFAULT_CREATE_USER = 'DL-00011C00D5AD'
@@ -126,13 +127,15 @@ Page({
 
   onLoad(options) {
     this.setData({
-      deviceId: options.deviceId || ''
+      deviceId: normalizeDeviceId(options.deviceId || DEFAULT_CREATE_USER)
     })
 
     this.fetchChatLogs({ pageNum: 1, append: false })
   },
 
   fetchChatLogs({ pageNum, append }) {
+    const createUser = this.data.deviceId || DEFAULT_CREATE_USER
+
     this.setData({
       loading: append ? this.data.loading : true,
       loadingMore: append,
@@ -140,7 +143,7 @@ Page({
     })
 
     request({
-      url: `${CHAT_HISTORY_URL}?createUser=${encodeURIComponent(DEFAULT_CREATE_USER)}&pageNum=${pageNum}&pageSize=${PAGE_SIZE}`,
+      url: `${CHAT_HISTORY_URL}?createUser=${encodeApiDeviceId(createUser)}&pageNum=${pageNum}&pageSize=${PAGE_SIZE}`,
       method: 'GET',
       withAuth: true,
       success: (response, responseData) => {

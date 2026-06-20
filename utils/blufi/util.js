@@ -424,6 +424,7 @@ module.exports = {
   ab2hex: ab2hex,
   hexCharCodeToStr: hexCharCodeToStr,
   filterDevice: filterDevice,
+  getDeviceDisplayName: getDeviceDisplayName,
   getType: getType,
   hexToBinArray: hexToBinArray,
   hexByArray: hexByArray,

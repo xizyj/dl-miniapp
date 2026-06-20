@@ -151,6 +151,10 @@ function listenSendRouterSsidAndPassword(isSetListener, funtion) {
 }
 
 
+function notifyTeardownBluetooth(options = {}) {
+  $wxBlufiImpl.teardownBluetooth(options);
+}
+
 /****************************** 对外  ***************************************/
 
 module.exports = {
@@ -167,6 +171,8 @@ module.exports = {
 
   notifyConnectBle,
   listenConnectBle,
+
+  notifyTeardownBluetooth,
 
   notifyInitBleEsp32,
   listenInitBleEsp32,

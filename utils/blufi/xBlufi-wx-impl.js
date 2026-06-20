@@ -13,6 +13,38 @@ let sequenceNumber = -1;
 let discoveredDevicesList = [];
 let discoveryPollTimer = null;
 let bluetoothDeviceFoundListener = null;
+const IOS_ADAPTER_REOPEN_DELAY_MS = 400;
+
+function isIOSPlatform() {
+  if (typeof wx.getSystemInfoSync !== 'function') {
+    return false
+  }
+
+  try {
+    return wx.getSystemInfoSync().platform === 'ios'
+  } catch (error) {
+    return false
+  }
+}
+
+function getOpenBluetoothAdapterOptions() {
+  if (isIOSPlatform()) {
+    return {
+      mode: 'central'
+    }
+  }
+
+  return {}
+}
+
+function runAfterDelay(callback, delayMs) {
+  if (delayMs > 0) {
+    setTimeout(callback, delayMs)
+    return
+  }
+
+  callback()
+}
 
 let self = {
   data: {
@@ -108,6 +140,11 @@ function normalizeAdvertisData(device) {
   }
 
   const normalized = Object.assign({}, device)
+  const name = typeof normalized.name === 'string' ? normalized.name.trim() : ''
+  const localName = typeof normalized.localName === 'string' ? normalized.localName.trim() : ''
+
+  normalized.name = name || localName
+  normalized.localName = localName || name
 
   if (normalized.advertisData) {
     normalized.advertisData = buf2hex(normalized.advertisData)
@@ -261,36 +298,74 @@ function startBluetoothDevicesDiscoveryScan() {
   }))
 }
 
+function openBluetoothAdapterAndDiscover() {
+  wx.openBluetoothAdapter(Object.assign({}, getOpenBluetoothAdapterOptions(), {
+    success: function () {
+      wx.getBluetoothAdapterState({
+        success: function () {
+          startBluetoothDevicesDiscoveryScan()
+        },
+        fail: function (res) {
+          stopDiscoveryPolling()
+          notifyDiscoveryStart(false, res)
+        }
+      })
+    },
+    fail: function () {
+      wx.closeBluetoothAdapter({
+        complete: function () {
+          runAfterDelay(function () {
+            wx.openBluetoothAdapter(Object.assign({}, getOpenBluetoothAdapterOptions(), {
+              success: function () {
+                startBluetoothDevicesDiscoveryScan()
+              },
+              fail: function (res) {
+                stopDiscoveryPolling()
+                notifyDiscoveryStart(false, res)
+              }
+            }))
+          }, isIOSPlatform() ? IOS_ADAPTER_REOPEN_DELAY_MS : 0)
+        }
+      })
+    }
+  }))
+}
+
 function openAdapterAndDiscover() {
+  const reopenDelay = isIOSPlatform() ? IOS_ADAPTER_REOPEN_DELAY_MS : 0
+
   wx.stopBluetoothDevicesDiscovery({
     complete: function () {
-      wx.openBluetoothAdapter({
-        success: function () {
-          wx.getBluetoothAdapterState({
-            success: function () {
-              startBluetoothDevicesDiscoveryScan()
-            },
-            fail: function (res) {
-              stopDiscoveryPolling()
-              notifyDiscoveryStart(false, res)
-            }
-          })
-        },
-        fail: function () {
-          wx.closeBluetoothAdapter({
-            complete: function () {
-              wx.openBluetoothAdapter({
-                success: function () {
-                  startBluetoothDevicesDiscoveryScan()
-                },
-                fail: function (res) {
-                  stopDiscoveryPolling()
-                  notifyDiscoveryStart(false, res)
-                }
-              })
-            }
-          })
-        }
+      runAfterDelay(function () {
+        openBluetoothAdapterAndDiscover()
+      }, reopenDelay)
+    }
+  })
+}
+
+function teardownBluetooth(options = {}) {
+  const deviceId = options.deviceId || self.data.deviceId || ''
+
+  stopDiscoveryPolling()
+  discoveredDevicesList = []
+  self.data.deviceId = null
+
+  const closeAdapter = function () {
+    wx.closeBluetoothAdapter({
+      complete: function () {}
+    })
+  }
+
+  wx.stopBluetoothDevicesDiscovery({
+    complete: function () {
+      if (!deviceId) {
+        closeAdapter()
+        return
+      }
+
+      wx.closeBLEConnection({
+        deviceId: deviceId,
+        complete: closeAdapter
       })
     }
   })
@@ -1010,4 +1085,5 @@ function init() {
 /****************************** 对外  ***************************************/
 module.exports = {
   init: init,
+  teardownBluetooth: teardownBluetooth
 };

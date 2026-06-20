@@ -3,18 +3,50 @@ var xBlufi = require("../../utils/blufi/xBlufi.js");
 var util = require("../../utils/blufi/util.js");
 let _this = null;
 
+const IOS_SCAN_RETRY_MS = 10000
+const IOS_SCAN_RETRY_MAX = 2
+
+function isIOS() {
+  try {
+    return wx.getSystemInfoSync().platform === 'ios'
+  } catch (error) {
+    return false
+  }
+}
+
+function normalizeDiscoveredDevice(device) {
+  if (!device || !device.deviceId) {
+    return null
+  }
+
+  const displayName = util.getDeviceDisplayName(device)
+
+  return Object.assign({}, device, {
+    name: displayName,
+    localName: displayName || device.localName || ''
+  })
+}
+
 function mergeDeviceLists(existing, incoming) {
   const map = new Map()
 
   ;(existing || []).forEach((device) => {
-    map.set(device.deviceId, device)
+    const normalized = normalizeDiscoveredDevice(device)
+    if (normalized) {
+      map.set(normalized.deviceId, normalized)
+    }
   })
 
   ;(incoming || []).forEach((device) => {
-    const previous = map.get(device.deviceId)
+    const normalized = normalizeDiscoveredDevice(device)
+    if (!normalized) {
+      return
+    }
 
-    if (!previous || (device.RSSI || -999) > (previous.RSSI || -999)) {
-      map.set(device.deviceId, device)
+    const previous = map.get(normalized.deviceId)
+
+    if (!previous || (normalized.RSSI || -999) > (previous.RSSI || -999)) {
+      map.set(normalized.deviceId, normalized)
     }
   })
 
@@ -26,9 +58,13 @@ Page({
     devicesList: [],
     searching: false,
     hasSearched: false,
+    isIOS: false
   },
   onLoad: function(options) {
     _this = this;
+    this.setData({
+      isIOS: isIOS()
+    })
     xBlufi.initXBlufi(1);
     console.log("xBlufi", xBlufi.XMQTT_SYSTEM)
     xBlufi.listenDeviceMsgEvent(true, this.funListenDeviceMsgEvent);
@@ -46,15 +82,25 @@ Page({
         if (options.result) {
           // const nextList = util.filterDevice(options.data, 'DL-')
           const nextList = options.data || []
+          const devicesList = mergeDeviceLists(_this.data.devicesList, nextList)
+
+          _this.clearIOSScanRetryTimer()
           _this.setData({
-            devicesList: mergeDeviceLists(_this.data.devicesList, nextList)
+            devicesList
           })
+
+          if (devicesList.length) {
+            _this.iosScanRetryCount = 0
+          } else if (_this.data.searching && _this.data.isIOS) {
+            _this.scheduleIOSScanRetry()
+          }
         }
         break;
 
       case xBlufi.XBLUFI_TYPE.TYPE_CONNECTED:
         console.log("连接回调：" + JSON.stringify(options))
         if (options.result) {
+          _this.clearIOSScanRetryTimer()
           wx.hideLoading()
           wx.showToast({
             title: '连接成功',
@@ -77,28 +123,30 @@ Page({
       case xBlufi.XBLUFI_TYPE.TYPE_GET_DEVICE_LISTS_START:
         if (!options.result) {
           console.log("蓝牙未开启 fail =》", options)
+          _this.clearIOSScanRetryTimer()
           wx.showToast({
             title: '蓝牙未开启',
             icon: 'none'
           })
         } else {
-          //蓝牙搜索开始
           _this.setData({
             searching: true,
-            hasSearched: true,
-            devicesList: []
+            hasSearched: true
           });
+
+          if (_this.data.isIOS && !_this.data.devicesList.length) {
+            _this.scheduleIOSScanRetry()
+          }
         }
         break;
 
       case xBlufi.XBLUFI_TYPE.TYPE_GET_DEVICE_LISTS_STOP:
         if (options.result) {
-          //蓝牙停止搜索ok
           console.log('蓝牙停止搜索ok')
         } else {
-          //蓝牙停止搜索失败
           console.log('蓝牙停止搜索失败')
         }
+        _this.clearIOSScanRetryTimer()
         _this.setData({
           searching: false
         });
@@ -106,11 +154,59 @@ Page({
 
     }
   },
+  scheduleIOSScanRetry() {
+    if (!this.data.isIOS || !this.data.searching) {
+      return
+    }
+
+    this.clearIOSScanRetryTimer()
+
+    if (typeof this.iosScanRetryCount !== 'number') {
+      this.iosScanRetryCount = 0
+    }
+
+    if (this.iosScanRetryCount >= IOS_SCAN_RETRY_MAX) {
+      return
+    }
+
+    this.iosScanRetryTimer = setTimeout(() => {
+      if (!this.data.isIOS || this.data.devicesList.length) {
+        return
+      }
+
+      this.iosScanRetryCount += 1
+      console.log('iOS bluetooth scan retry:', this.iosScanRetryCount)
+
+      xBlufi.notifyStartDiscoverBle({
+        isStart: false
+      })
+
+      setTimeout(() => {
+        if (this.data.devicesList.length) {
+          return
+        }
+
+        xBlufi.notifyStartDiscoverBle({
+          isStart: true
+        })
+      }, 400)
+    }, IOS_SCAN_RETRY_MS)
+  },
+  clearIOSScanRetryTimer() {
+    if (!this.iosScanRetryTimer) {
+      return
+    }
+
+    clearTimeout(this.iosScanRetryTimer)
+    this.iosScanRetryTimer = null
+  },
   startSearch: function() {
     if (this.data.searching) {
       return
     }
 
+    this.iosScanRetryCount = 0
+    this.clearIOSScanRetryTimer()
     this.setData({
       devicesList: []
     })
@@ -121,6 +217,7 @@ Page({
   },
   Search: function() {
     if (this.data.searching) {
+      this.clearIOSScanRetryTimer()
       xBlufi.notifyStartDiscoverBle({
         'isStart': false
       })
@@ -129,7 +226,7 @@ Page({
     }
   },
   Connect: function(e) {
-    //停止搜索
+    this.clearIOSScanRetryTimer()
     xBlufi.notifyStartDiscoverBle({
       'isStart': false
     })
@@ -149,11 +246,13 @@ Page({
     }
   },
   onUnload: function() {
+    this.clearIOSScanRetryTimer()
     if (this.data.searching) {
       xBlufi.notifyStartDiscoverBle({
         'isStart': false
       })
     }
+    xBlufi.notifyTeardownBluetooth()
     xBlufi.listenDeviceMsgEvent(false, this.funListenDeviceMsgEvent);
   }
 });

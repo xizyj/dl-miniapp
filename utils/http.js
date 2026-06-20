@@ -2,10 +2,36 @@ const TOKEN_STORAGE_KEY = 'authToken'
 const AUTH_DEVICE_ID_STORAGE_KEY = 'authDeviceId'
 const API_BASE_URL = 'https://aigo.8ms.xyz/api'
 const AUTH_DEVICE_URL = `${API_BASE_URL}/auth/device`
-const { toAuthApiDeviceId } = require('./device-id')
+const { toApiDeviceId } = require('./device-id')
 
 let pendingTokenPromise = null
 let pendingTokenDeviceId = ''
+
+function mapApiRequestData(data) {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    return data
+  }
+
+  const mapped = Object.assign({}, data)
+
+  if (typeof mapped.deviceId === 'string' && mapped.deviceId) {
+    mapped.deviceId = toApiDeviceId(mapped.deviceId)
+  }
+
+  return mapped
+}
+
+function buildDeviceApiUrl(baseUrl, deviceId) {
+  if (!baseUrl || !deviceId) {
+    return baseUrl
+  }
+
+  return `${baseUrl}/${encodeURIComponent(toApiDeviceId(deviceId))}`
+}
+
+function encodeApiDeviceId(deviceId) {
+  return encodeURIComponent(toApiDeviceId(deviceId))
+}
 
 function getStoredToken() {
   return wx.getStorageSync(TOKEN_STORAGE_KEY)
@@ -84,7 +110,7 @@ function ensureAuthToken(options = {}) {
         'Content-Type': 'application/json'
       },
       data: {
-        deviceId: toAuthApiDeviceId(resolvedDeviceId)
+        deviceId: toApiDeviceId(resolvedDeviceId)
       },
       success: (response) => {
         const token = extractToken(response)
@@ -171,7 +197,7 @@ function sendRequest(options, resolvedToken) {
   wx.request({
     url,
     method,
-    data,
+    data: mapApiRequestData(data),
     header: requestHeader,
     success: (response) => {
       if (success) {
@@ -211,6 +237,8 @@ module.exports = {
   AUTH_DEVICE_ID_STORAGE_KEY,
   TOKEN_STORAGE_KEY,
   buildApiUrl,
+  buildDeviceApiUrl,
+  encodeApiDeviceId,
   getStoredAuthDeviceId,
   getStoredToken,
   loginDevice,

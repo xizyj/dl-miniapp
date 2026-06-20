@@ -119,10 +119,8 @@ Page({
     this.unbindWifiListListener()
     console.log('unload')
 
-    xBlufi.notifyConnectBle({
-      isStart: false,
-      deviceId: this.data.connectedDeviceId,
-      name: this.data.name
+    xBlufi.notifyTeardownBluetooth({
+      deviceId: this.data.connectedDeviceId
     })
     xBlufi.listenDeviceMsgEvent(false, this.funListenDeviceMsgEvent)
   },

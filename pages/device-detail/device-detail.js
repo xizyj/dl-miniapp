@@ -1,4 +1,5 @@
-const { buildApiUrl, request } = require('../../utils/http')
+const { buildApiUrl, buildDeviceApiUrl, encodeApiDeviceId, request } = require('../../utils/http')
+const { fromApiDeviceId, normalizeDeviceId } = require('../../utils/device-id')
 const DEVICE_DETAIL_BASE_URL = buildApiUrl('/user_device/deviceInfo')
 const RESET_DEVICE_BASE_URL = buildApiUrl('/device_setting/reset')
 const CREATE_AGENT_VISIBLE = false
@@ -50,7 +51,7 @@ function getDetailState(responseData, fallbackDeviceId) {
   return {
     loading: false,
     errorMessage: '',
-    deviceId: settings.deviceId || fallbackDeviceId,
+    deviceId: fromApiDeviceId(settings.deviceId || fallbackDeviceId),
     modelName: bot.modelName || '',
     model: bot.model || '',
     modelPrefix: bot.modelPrefix || '',
@@ -93,7 +94,7 @@ Page({
   },
 
   onLoad(options) {
-    const deviceId = options.deviceId || ''
+    const deviceId = normalizeDeviceId(options.deviceId || '')
 
     this.setData({
       deviceId
@@ -131,7 +132,7 @@ Page({
 
   fetchDeviceDetail(deviceId) {
     request({
-      url: `${DEVICE_DETAIL_BASE_URL}/${encodeURIComponent(deviceId)}`,
+      url: buildDeviceApiUrl(DEVICE_DETAIL_BASE_URL, deviceId),
       method: 'GET',
       withAuth: true,
       success: (response, responseData) => {
@@ -167,7 +168,7 @@ Page({
     }
 
     request({
-      url: `${RESET_DEVICE_BASE_URL}/${encodeURIComponent(deviceId)}`,
+      url: buildDeviceApiUrl(RESET_DEVICE_BASE_URL, deviceId),
       method: 'POST',
       withAuth: true,
       success: (response, responseData) => {

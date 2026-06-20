@@ -1,4 +1,5 @@
-const { buildApiUrl, request } = require('../../utils/http')
+const { buildApiUrl, encodeApiDeviceId, request } = require('../../utils/http')
+const { normalizeDeviceId } = require('../../utils/device-id')
 
 const MODEL_MARKET_URL = buildApiUrl('/gptmodel/list')
 const BIND_MODEL_BASE_URL = buildApiUrl('/gptmodel/bindDevice')
@@ -34,7 +35,7 @@ Page({
 
   onLoad(options) {
     const query = options.query || DEFAULT_QUERY
-    const deviceId = options.deviceId || ''
+    const deviceId = normalizeDeviceId(options.deviceId || '')
 
     this.setData({ query, deviceId })
     this.fetchModels({ query, pageNum: 1, append: false })
@@ -142,7 +143,7 @@ Page({
     })
 
     request({
-      url: `${BIND_MODEL_BASE_URL}/${encodeURIComponent(modelId)}/${encodeURIComponent(deviceId)}`,
+      url: `${BIND_MODEL_BASE_URL}/${encodeURIComponent(modelId)}/${encodeApiDeviceId(deviceId)}`,
       method: 'POST',
       withAuth: true,
       success: (response, responseData) => {

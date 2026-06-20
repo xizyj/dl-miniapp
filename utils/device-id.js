@@ -25,7 +25,7 @@ function normalizeDeviceId(deviceId) {
   return `${DEVICE_ID_PREFIX}${compactDeviceId}`
 }
 
-function toAuthApiDeviceId(deviceId) {
+function toApiDeviceId(deviceId) {
   const normalized = normalizeDeviceId(deviceId)
 
   if (!normalized) {
@@ -39,9 +39,15 @@ function toAuthApiDeviceId(deviceId) {
   return normalized
 }
 
+function fromApiDeviceId(deviceId) {
+  return normalizeDeviceId(deviceId)
+}
+
 module.exports = {
   API_DEVICE_ID_PREFIX,
   DEVICE_ID_PREFIX,
   normalizeDeviceId,
-  toAuthApiDeviceId
+  toApiDeviceId,
+  toAuthApiDeviceId: toApiDeviceId,
+  fromApiDeviceId
 }

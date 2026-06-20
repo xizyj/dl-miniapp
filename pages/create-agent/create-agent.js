@@ -1,4 +1,5 @@
 const { buildApiUrl, request } = require('../../utils/http')
+const { normalizeDeviceId } = require('../../utils/device-id')
 
 const CREATE_AGENT_URL = buildApiUrl('/user_bot')
 const LLM_MODEL_PAGE_URL = buildApiUrl('/llm_model/page')
@@ -53,7 +54,7 @@ Page({
   },
 
   onLoad(options) {
-    const deviceId = options.deviceId || ''
+    const deviceId = normalizeDeviceId(options.deviceId || '')
 
     this.setData({
       deviceId

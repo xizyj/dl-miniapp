@@ -7,7 +7,7 @@
     <block wx:for="{{devicesList}}" wx:key="deviceId">
       <view class="list-item" id="{{item.deviceId}}" bindtap="Connect">
         <view style="display:flex;flex-direction:column;width:80%">
-          <text style="font-size:medium;word-break:break-all">设备名称: {{item.name}}</text>
+          <text style="font-size:medium;word-break:break-all">设备名称: {{item.name || item.localName || '未知设备'}}</text>
           <text style="font-size:x-small;color:gray;word-break:break-all">设备ID: {{item.deviceId}}</text>
           <text style="font-size:x-small;color:gray;word-break:break-all">信号强度RSSI: {{item.RSSI}}</text>
         </view>
@@ -18,6 +18,7 @@
   <view wx:elif="{{hasSearched}}" class="empty-state">
     <text>没有搜索到设备</text>
     <text wx:if="{{searching}}" class="empty-state-sub">正在继续搜索，请确认设备已进入配网模式</text>
+    <text wx:elif="{{isIOS}}" class="empty-state-sub">若搜不到，请确认设备在配网模式，可关闭再打开手机蓝牙后重新搜索</text>
     <text wx:else class="empty-state-sub">可点击「重新搜索」重试，并靠近设备</text>
   </view>
 </view>
