@@ -24,7 +24,9 @@
             </view>
           </scroll-view>
           <view wx:else class="wifi-empty">
-            <text>{{wifiLoading ? '搜索中，请稍候...' : '请点击刷新重新搜索 Wi-Fi'}}</text>
+            <text wx:if="{{wifiLoading}}">搜索中，请稍候...</text>
+            <text wx:elif="{{isIOS}}">已自动填入当前连接的 Wi-Fi，如需选择其他网络请点击刷新</text>
+            <text wx:else>请点击刷新重新搜索 Wi-Fi</text>
           </view>
           <view class="weui-cell">
             <view class="weui-cell__hd"><label class="weui-label">已选：</label></view>

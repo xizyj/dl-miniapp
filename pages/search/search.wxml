@@ -1,4 +1,8 @@
 <view class="container">
+  <view class="search-toolbar">
+    <text class="search-status">{{searching ? '正在搜索附近设备...' : (devicesList.length ? '共 ' + devicesList.length + ' 台设备' : '暂未发现设备')}}</text>
+    <button class="search-action-button" size="mini" bindtap="Search">{{searching ? '停止' : '重新搜索'}}</button>
+  </view>
   <scroll-view wx:if="{{devicesList.length}}" scroll-y style="width:690rpx;height:{{list_height}}rpx">
     <block wx:for="{{devicesList}}" wx:key="deviceId">
       <view class="list-item" id="{{item.deviceId}}" bindtap="Connect">
@@ -13,6 +17,7 @@
   </scroll-view>
   <view wx:elif="{{hasSearched}}" class="empty-state">
     <text>没有搜索到设备</text>
-    <text wx:if="{{searching}}" class="empty-state-sub">正在继续搜索...</text>
+    <text wx:if="{{searching}}" class="empty-state-sub">正在继续搜索，请确认设备已进入配网模式</text>
+    <text wx:else class="empty-state-sub">可点击「重新搜索」重试，并靠近设备</text>
   </view>
 </view>

@@ -10,6 +10,9 @@ const timeOut = 20; //超时时间
 var timeId = "";
 let sequenceControl = 0;
 let sequenceNumber = -1;
+let discoveredDevicesList = [];
+let discoveryPollTimer = null;
+let bluetoothDeviceFoundListener = null;
 
 let self = {
   data: {
@@ -97,6 +100,200 @@ function formatBytesAsHex(bytes) {
   return bytes.map(function (item) {
     return ('00' + item.toString(16)).slice(-2);
   }).join(' ');
+}
+
+function normalizeAdvertisData(device) {
+  if (!device || !device.deviceId) {
+    return null
+  }
+
+  const normalized = Object.assign({}, device)
+
+  if (normalized.advertisData) {
+    normalized.advertisData = buf2hex(normalized.advertisData)
+  } else {
+    normalized.advertisData = ''
+  }
+
+  return normalized
+}
+
+function extractFoundDevices(payload) {
+  if (!payload) {
+    return []
+  }
+
+  if (payload.deviceId) {
+    const device = normalizeAdvertisData(payload)
+    return device ? [device] : []
+  }
+
+  if (payload.devices && payload.devices.length) {
+    const device = normalizeAdvertisData(payload.devices[0])
+    return device ? [device] : []
+  }
+
+  if (payload[0] && payload[0].deviceId) {
+    const device = normalizeAdvertisData(payload[0])
+    return device ? [device] : []
+  }
+
+  return []
+}
+
+function notifyDiscoveredDevices() {
+  if (!mDeviceEvent) {
+    return
+  }
+
+  mDeviceEvent.notifyDeviceMsgEvent({
+    type: mDeviceEvent.XBLUFI_TYPE.TYPE_GET_DEVICE_LISTS,
+    result: true,
+    data: discoveredDevicesList.slice()
+  })
+}
+
+function upsertDiscoveredDevice(device) {
+  const normalized = normalizeAdvertisData(device)
+
+  if (!normalized) {
+    return false
+  }
+
+  for (let i = 0; i < discoveredDevicesList.length; i++) {
+    if (discoveredDevicesList[i].deviceId === normalized.deviceId) {
+      discoveredDevicesList[i] = normalized
+      return true
+    }
+  }
+
+  discoveredDevicesList.push(normalized)
+  return true
+}
+
+function ensureBluetoothDeviceFoundListener() {
+  if (bluetoothDeviceFoundListener) {
+    return
+  }
+
+  bluetoothDeviceFoundListener = function (devices) {
+    extractFoundDevices(devices).forEach(upsertDiscoveredDevice)
+    notifyDiscoveredDevices()
+  }
+
+  wx.onBluetoothDeviceFound(bluetoothDeviceFoundListener)
+}
+
+function stopDiscoveryPolling() {
+  if (!discoveryPollTimer) {
+    return
+  }
+
+  clearInterval(discoveryPollTimer)
+  discoveryPollTimer = null
+}
+
+function startDiscoveryPolling() {
+  stopDiscoveryPolling()
+
+  if (typeof wx.getBluetoothDevices !== 'function') {
+    return
+  }
+
+  discoveryPollTimer = setInterval(function () {
+    wx.getBluetoothDevices({
+      success: function (res) {
+        let changed = false
+
+        ;(res.devices || []).forEach(function (device) {
+          if (upsertDiscoveredDevice(device)) {
+            changed = true
+          }
+        })
+
+        if (changed) {
+          notifyDiscoveredDevices()
+        }
+      }
+    })
+  }, 2500)
+}
+
+function notifyDiscoveryStart(result, data) {
+  if (!mDeviceEvent) {
+    return
+  }
+
+  mDeviceEvent.notifyDeviceMsgEvent({
+    type: mDeviceEvent.XBLUFI_TYPE.TYPE_GET_DEVICE_LISTS_START,
+    result: result,
+    data: data
+  })
+}
+
+function startBluetoothDevicesDiscoveryScan() {
+  discoveredDevicesList = []
+  ensureBluetoothDeviceFoundListener()
+  startDiscoveryPolling()
+
+  const discoveryOptions = {
+    allowDuplicatesKey: true
+  }
+
+  if (typeof wx.getSystemInfoSync === 'function') {
+    try {
+      if (wx.getSystemInfoSync().platform !== 'ios') {
+        discoveryOptions.powerLevel = 'high'
+      }
+    } catch (error) {
+      discoveryOptions.powerLevel = 'high'
+    }
+  }
+
+  wx.startBluetoothDevicesDiscovery(Object.assign({}, discoveryOptions, {
+    success: function (res) {
+      notifyDiscoveryStart(true, res)
+    },
+    fail: function (res) {
+      stopDiscoveryPolling()
+      notifyDiscoveryStart(false, res)
+    }
+  }))
+}
+
+function openAdapterAndDiscover() {
+  wx.stopBluetoothDevicesDiscovery({
+    complete: function () {
+      wx.openBluetoothAdapter({
+        success: function () {
+          wx.getBluetoothAdapterState({
+            success: function () {
+              startBluetoothDevicesDiscoveryScan()
+            },
+            fail: function (res) {
+              stopDiscoveryPolling()
+              notifyDiscoveryStart(false, res)
+            }
+          })
+        },
+        fail: function () {
+          wx.closeBluetoothAdapter({
+            complete: function () {
+              wx.openBluetoothAdapter({
+                success: function () {
+                  startBluetoothDevicesDiscoveryScan()
+                },
+                fail: function (res) {
+                  stopDiscoveryPolling()
+                  notifyDiscoveryStart(false, res)
+                }
+              })
+            }
+          })
+        }
+      })
+    }
+  })
 }
 
 function normalizeBleUuid(uuid) {
@@ -381,132 +578,14 @@ function init() {
   mDeviceEvent.listenStartDiscoverBle(true, function (options) {
 
     if (options.isStart) {
-      //第一步检查蓝牙适配器是否可用
       wx.onBluetoothAdapterStateChange(function (res) {
         if (!res.available) {
 
         }
       });
-      //第二步关闭适配器，重新来搜索
-      wx.closeBluetoothAdapter({
-        complete: function (res) {
-          wx.openBluetoothAdapter({
-            success: function (res) {
-              wx.getBluetoothAdapterState({
-                success: function (res) {
-                  wx.stopBluetoothDevicesDiscovery({
-                    success: function (res) {
-                      let devicesList = [];
-                      let countsTimes = 0;
-                      wx.onBluetoothDeviceFound(function (devices) {
-                        //剔除重复设备，兼容不同设备API的不同返回值
-                        var isnotexist = true;
-                        if (devices.deviceId) {
-                          if (devices.advertisData) {
-                            devices.advertisData = buf2hex(devices.advertisData)
-                          } else {
-                            devices.advertisData = ''
-                          }
-                          for (var i = 0; i < devicesList.length; i++) {
-                            if (devices.deviceId === devicesList[i].deviceId) {
-                              isnotexist = false
-                            }
-                          }
-                          if (isnotexist) {
-                            devicesList.push(devices)
-                          }
-                        } else if (devices.devices) {
-                          if (devices.devices[0].advertisData) {
-                            devices.devices[0].advertisData = buf2hex(devices.devices[0].advertisData)
-                          } else {
-                            devices.devices[0].advertisData = ''
-                          }
-                          for (var i = 0; i < devicesList.length; i++) {
-                            if (devices.devices[0].deviceId == devicesList[i].deviceId) {
-                              isnotexist = false
-                            }
-                          }
-                          if (isnotexist) {
-                            devicesList.push(devices.devices[0])
-                          }
-                        } else if (devices[0]) {
-                          if (devices[0].advertisData) {
-                            devices[0].advertisData = buf2hex(devices[0].advertisData)
-                          } else {
-                            devices[0].advertisData = ''
-                          }
-                          for (var i = 0; i < devices_list.length; i++) {
-                            if (devices[0].deviceId == devicesList[i].deviceId) {
-                              isnotexist = false
-                            }
-                          }
-                          if (isnotexist) {
-                            devicesList.push(devices[0])
-                          }
-                        }
-
-                        let obj = {
-                          'type': mDeviceEvent.XBLUFI_TYPE.TYPE_GET_DEVICE_LISTS,
-                          'result': true,
-                          'data': devicesList
-                        }
-                        mDeviceEvent.notifyDeviceMsgEvent(obj);
-                      })
-                      wx.startBluetoothDevicesDiscovery({
-                        allowDuplicatesKey: true,
-                        success: function (res) {
-                          let obj = {
-                            'type': mDeviceEvent.XBLUFI_TYPE.TYPE_GET_DEVICE_LISTS_START,
-                            'result': true,
-                            'data': res
-                          }
-                          mDeviceEvent.notifyDeviceMsgEvent(obj);
-                          //开始扫码，清空列表
-                          devicesList.length = 0;
-
-                        },
-                        fail: function (res) {
-                          let obj = {
-                            'type': mDeviceEvent.XBLUFI_TYPE.TYPE_GET_DEVICE_LISTS_START,
-                            'result': false,
-                            'data': res
-                          }
-                          mDeviceEvent.notifyDeviceMsgEvent(obj);
-                        }
-                      });
-                    },
-                    fail: function (res) {
-                      let obj = {
-                        'type': mDeviceEvent.XBLUFI_TYPE.TYPE_GET_DEVICE_LISTS_START,
-                        'result': false,
-                        'data': res
-                      }
-                      mDeviceEvent.notifyDeviceMsgEvent(obj);
-                    }
-                  });
-                },
-                fail: function (res) {
-                  let obj = {
-                    'type': mDeviceEvent.XBLUFI_TYPE.TYPE_GET_DEVICE_LISTS_START,
-                    'result': false,
-                    'data': res
-                  }
-                  mDeviceEvent.notifyDeviceMsgEvent(obj);
-                }
-              });
-            },
-            fail: function (res) {
-              let obj = {
-                'type': mDeviceEvent.XBLUFI_TYPE.TYPE_GET_DEVICE_LISTS_START,
-                'result': false,
-                'data': res
-              }
-              mDeviceEvent.notifyDeviceMsgEvent(obj);
-            }
-          });
-        }
-      });
+      openAdapterAndDiscover()
     } else {
+      stopDiscoveryPolling()
       wx.stopBluetoothDevicesDiscovery({
         success: function (res) {
           clearInterval(tempTimer);

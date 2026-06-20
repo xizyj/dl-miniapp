@@ -3,6 +3,24 @@ var xBlufi = require("../../utils/blufi/xBlufi.js");
 var util = require("../../utils/blufi/util.js");
 let _this = null;
 
+function mergeDeviceLists(existing, incoming) {
+  const map = new Map()
+
+  ;(existing || []).forEach((device) => {
+    map.set(device.deviceId, device)
+  })
+
+  ;(incoming || []).forEach((device) => {
+    const previous = map.get(device.deviceId)
+
+    if (!previous || (device.RSSI || -999) > (previous.RSSI || -999)) {
+      map.set(device.deviceId, device)
+    }
+  })
+
+  return Array.from(map.values()).sort((left, right) => (right.RSSI || 0) - (left.RSSI || 0))
+}
+
 Page({
   data: {
     devicesList: [],
@@ -15,7 +33,7 @@ Page({
     console.log("xBlufi", xBlufi.XMQTT_SYSTEM)
     xBlufi.listenDeviceMsgEvent(true, this.funListenDeviceMsgEvent);
 
-    if (options.autoSearch === '1') {
+    if (options.autoSearch !== '0') {
       this.startSearch()
     }
   },
@@ -25,10 +43,13 @@ Page({
 
      
       case xBlufi.XBLUFI_TYPE.TYPE_GET_DEVICE_LISTS:
-        if (options.result)
+        if (options.result) {
+          // const nextList = util.filterDevice(options.data, 'DL-')
+          const nextList = options.data || []
           _this.setData({
-            devicesList: util.filterDevice(options.data, 'DL-')
-          });
+            devicesList: mergeDeviceLists(_this.data.devicesList, nextList)
+          })
+        }
         break;
 
       case xBlufi.XBLUFI_TYPE.TYPE_CONNECTED:
@@ -89,6 +110,10 @@ Page({
     if (this.data.searching) {
       return
     }
+
+    this.setData({
+      devicesList: []
+    })
 
     xBlufi.notifyStartDiscoverBle({
       'isStart': true

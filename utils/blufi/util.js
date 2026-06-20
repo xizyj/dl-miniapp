@@ -105,17 +105,39 @@ const hexCharCodeToStr = hexCharCodeStr => {
   return resultStr.join("");
 }
 //过滤名称
+const getDeviceDisplayName = (device) => {
+  const name = typeof device.name === 'string' ? device.name.trim() : ''
+  const localName = typeof device.localName === 'string' ? device.localName.trim() : ''
+
+  return name || localName
+}
+
 const filterDevice = (devices, filterName) => {
-  var self = this,
-    list = [];
-  for (var i = 0; i < devices.length; i++) {
-    var device = devices[i];
-    var re = new RegExp("^(" + filterName + ")");
-    if (re.test(device["name"])) {
-      list.push(device);
+  const prefixes = Array.isArray(filterName) ? filterName.slice() : [filterName]
+
+  if (prefixes.indexOf('DL-') !== -1 && prefixes.indexOf('MYF-') === -1) {
+    prefixes.push('MYF-')
+  }
+
+  const list = []
+
+  for (let i = 0; i < devices.length; i++) {
+    const device = devices[i]
+    const displayName = getDeviceDisplayName(device)
+
+    if (!displayName) {
+      continue
+    }
+
+    const matched = prefixes.some((prefix) => displayName.indexOf(prefix) === 0)
+
+    if (matched) {
+      device.name = displayName
+      list.push(device)
     }
   }
-  return list;
+
+  return list
 }
 //获去type
 const getType = (pkgType, subType) => {

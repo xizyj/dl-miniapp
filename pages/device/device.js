@@ -6,6 +6,14 @@ const { loginDevice } = require('../../utils/http')
 const PROVISION_TIMEOUT_MS = 20000
 const WIFI_LIST_LOADING_TIMEOUT_MS = 15000
 
+function isIOS() {
+  try {
+    return wx.getSystemInfoSync().platform === 'ios'
+  } catch (error) {
+    return false
+  }
+}
+
 function showModal(options) {
   wx.showModal({
     showCancel: false,
@@ -70,7 +78,8 @@ Page({
     bindingDevice: false,
     wifiLoading: false,
     wifiList: [],
-    connectedWifiSsid: ''
+    connectedWifiSsid: '',
+    isIOS: false
   },
 
   onLoad(options) {
@@ -78,7 +87,8 @@ Page({
 
     this.setData({
       name,
-      connectedDeviceId: deviceId
+      connectedDeviceId: deviceId,
+      isIOS: isIOS()
     })
 
     this.bindWifiListListener()
@@ -97,8 +107,8 @@ Page({
   },
 
   onShow() {
-    if (this.hasShownOnce) {
-      this.loadWifiList()
+    if (this.hasShownOnce && !this.data.isIOS) {
+      this.loadWifiList({ scanList: true })
     }
     this.hasShownOnce = true
   },
@@ -250,7 +260,9 @@ Page({
     this.wifiListListener = null
   },
 
-  loadWifiList() {
+  loadWifiList(options = {}) {
+    const scanList = typeof options.scanList === 'boolean' ? options.scanList : !isIOS()
+
     if (typeof wx.startWifi !== 'function') {
       return
     }
@@ -264,14 +276,14 @@ Page({
       success: () => {
         this.ensureLocationPermission()
           .finally(() => {
-            this.readConnectedWifiThenScan()
+            this.readConnectedWifiThenScan(scanList)
           })
       },
       fail: (error) => {
         if (error && error.errMsg && error.errMsg.indexOf('already started') !== -1) {
           this.ensureLocationPermission()
             .finally(() => {
-              this.readConnectedWifiThenScan()
+              this.readConnectedWifiThenScan(scanList)
             })
           return
         }
@@ -311,9 +323,13 @@ Page({
     })
   },
 
-  readConnectedWifiThenScan() {
+  readConnectedWifiThenScan(scanList) {
     if (typeof wx.getConnectedWifi !== 'function') {
-      this.requestWifiList()
+      if (scanList) {
+        this.requestWifiList()
+      } else {
+        this.finishWifiListWithoutScan()
+      }
       return
     }
 
@@ -333,12 +349,42 @@ Page({
           })
         }
 
+        if (!scanList) {
+          this.finishWifiListWithoutScan(connectedSsid)
+          return
+        }
+
         this.requestWifiList()
       },
       fail: (error) => {
         console.error('get connected wifi failed:', error)
+
+        if (!scanList) {
+          this.finishWifiListWithoutScan()
+          return
+        }
+
         this.requestWifiList()
       }
+    })
+  },
+
+  finishWifiListWithoutScan(connectedSsid = '') {
+    this.clearWifiListLoadingTimeout()
+
+    const resolvedSsid = connectedSsid || this.data.connectedWifiSsid || this.data.ssid
+    const wifiList = resolvedSsid ? [{
+      SSID: resolvedSsid,
+      signalStrength: 0,
+      secure: true,
+      connected: true
+    }] : []
+
+    this.setData({
+      wifiList,
+      wifiLoading: false,
+      ssid: resolvedSsid,
+      password: resolvedSsid ? getCachedPassword(resolvedSsid) : this.data.password
     })
   },
 
@@ -385,7 +431,21 @@ Page({
   },
 
   refreshWifiList() {
-    this.loadWifiList()
+    if (this.data.isIOS) {
+      wx.showModal({
+        title: '搜索 Wi-Fi',
+        content: 'iOS 需要进入系统「无线局域网」页面扫描附近网络，完成后返回小程序即可看到列表。',
+        confirmText: '去设置',
+        success: (result) => {
+          if (result.confirm) {
+            this.loadWifiList({ scanList: true })
+          }
+        }
+      })
+      return
+    }
+
+    this.loadWifiList({ scanList: true })
   },
 
   startWifiListLoadingTimeout() {
